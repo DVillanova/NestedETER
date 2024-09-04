@@ -267,7 +267,7 @@ def obtain_tagged_and_marked_transcriptions(orig_ref_named_entity: list, orig_hy
 #and a mark (boolean) to indicate whether the substitution cost for that token must always be one (True) or can be computed
 #normally (False). Therefore, each element is a tuple of three elements (MARKED: {True, False}, token: str, tag: str)
 #if it is necessary to compute char-level edit distance, the elements must be split previously
-def calc_edit_dist(ref_ne: list, hyp_ne: list) -> float:
+def calc_edit_dist(ref_ne: list, hyp_ne: list, tagging_weight = 1.0) -> float:
     #Exception: substituting empty NE with empty NE
     if len(ref_ne) == 0 and len(hyp_ne) == 0:
         raise Exception("Reference entity and hypothesized entity were of size 0")
@@ -293,12 +293,14 @@ def calc_edit_dist(ref_ne: list, hyp_ne: list) -> float:
         for i in range(1, LEN_VECTOR):
             dist_ins = 1 + dist_vec[i - 1]
             dist_del = 1 + prev_dist_vec[i]
-            cost_sus = 0
+            
+            transc_err = int(ref_tagged_transcription[i - 1][1] != hyp_tagged_transcription[j - 1][1])
             if (ref_tagged_transcription[i - 1][0] == True #Reference marked as wrong
                 or hyp_tagged_transcription[j - 1][0] == True #Hypothesis marked as wrong
-                or ref_tagged_transcription[i - 1][2] != hyp_tagged_transcription[j - 1][2] #Tagging does not match
-                or ref_tagged_transcription[i - 1][1] != hyp_tagged_transcription[j - 1][1]): #Transcription does not match
-                cost_sus = 1
+                or ref_tagged_transcription[i - 1][2] != hyp_tagged_transcription[j - 1][2]): #Tagging does not match    
+                cost_sus = tagging_weight + (1-tagging_weight) * transc_err
+            else:
+                cost_sus = float(transc_err)
             
             dist_sus = prev_dist_vec[i - 1] + cost_sus
 
