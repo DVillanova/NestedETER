@@ -218,6 +218,14 @@ h_10_ne = [
     ]
 ]
 
+#<1> <2> A </2> <2> B </2> </1>
+#<1> A <2> B </2> </1>
+#Comparison gives 1 due to order in which tagging tree edit operations is considered
+#but should be 0.5
+print(calc_edit_dist(g_3_ne, h_10_ne))
+assert(calc_edit_dist(g_3_ne, h_10_ne)) == 0.5
+assert(calc_edit_dist(h_10_ne, g_3_ne)) == 0.5
+
 assert calc_edit_dist(g_0_ne, h_0_ne) == 1.0
 assert calc_edit_dist(h_0_ne, g_0_ne) == 1.0
 
@@ -254,10 +262,3 @@ assert calc_edit_dist(h_8_ne, g_2_ne ) == 0.25
 assert calc_edit_dist(g_2_ne, h_9_ne) == 0.5
 assert calc_edit_dist(h_9_ne, g_2_ne ) == 0.5
 
-#<1> <2> A </2> <2> B </2> </1>
-#<1> A <2> B </2> </1>
-#Comparison gives 1 due to order in which tagging tree edit operations is considered
-#but should be 0.5
-print(calc_edit_dist(g_3_ne, h_10_ne))
-assert(calc_edit_dist(g_3_ne, h_10_ne)) == 0.5
-assert(calc_edit_dist(h_10_ne, g_3_ne)) == 0.5

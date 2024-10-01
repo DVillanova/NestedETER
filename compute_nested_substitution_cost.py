@@ -1,5 +1,30 @@
-from zss import simple_distance, Node
+from __future__ import absolute_import
+import zss
+from zss import Node, Operation
 import copy
+
+from six.moves import range
+import collections
+
+try:
+    import numpy as np
+    zeros = np.zeros
+except ImportError:
+    def py_zeros(dim, pytype):
+        assert len(dim) == 2
+        return [[pytype() for y in range(dim[1])]
+                for x in range(dim[0])]
+    zeros = py_zeros
+
+
+try:
+    from editdistance import eval as strdist
+except ImportError:
+    def strdist(a, b):
+        if a == b:
+            return 0
+        else:
+            return 1
 
 CATEGORY = 0
 CHILDREN = 1
@@ -46,6 +71,120 @@ def build_tagging_tree(named_entity: list) -> Node:
             current_depth_index = 0
 
     return tagging_tree
+
+#Overwrite function definition of Distance in zss to return all sequences of edit operations instead of
+#just one that can reach the final node
+
+REMOVE = Operation.remove
+INSERT = Operation.insert
+UPDATE = Operation.update
+MATCH = Operation.match
+
+def distance(A, B, get_children, insert_cost, remove_cost, update_cost,
+             return_operations=False):
+    '''Your modified distance function goes here'''
+    A, B = zss.AnnotatedTree(A, get_children), zss.AnnotatedTree(B, get_children)
+    size_a = len(A.nodes)
+    size_b = len(B.nodes)
+    treedists = zeros((size_a, size_b), float)
+    operations = [[[] for _ in range(size_b)] for _ in range(size_a)]
+
+    def treedist(i, j):
+        Al = A.lmds
+        Bl = B.lmds
+        An = A.nodes
+        Bn = B.nodes
+
+        m = i - Al[i] + 2
+        n = j - Bl[j] + 2
+        fd = zeros((m, n), float)
+        partial_ops = [[[] for _ in range(n)] for _ in range(m)]
+
+        ioff = Al[i] - 1
+        joff = Bl[j] - 1
+
+        partial_ops[0][0] = [[]]
+
+        for x in range(1, m):
+            node = An[x + ioff]
+            fd[x][0] = fd[x-1][0] + remove_cost(node)
+            partial_ops[x][0] = [[Operation(REMOVE, node)]]  
+
+        for y in range(1, n):
+            node = Bn[y + joff]
+            fd[0][y] = fd[0][y-1] + insert_cost(node)
+            partial_ops[0][y] = [[Operation(INSERT, arg2=node)]]  
+
+        for x in range(1, m):
+            for y in range(1, n):
+                node1 = An[x + ioff]
+                node2 = Bn[y + joff]
+
+                if Al[i] == Al[x + ioff] and Bl[j] == Bl[y + joff]:
+                    costs = [fd[x-1][y] + remove_cost(node1),
+                             fd[x][y-1] + insert_cost(node2),
+                             fd[x-1][y-1] + update_cost(node1, node2)]
+                    min_cost = min(costs)
+                    fd[x][y] = min_cost
+
+
+
+                    if costs[0] == min_cost:
+                        partial_ops[x][y].extend([path + [Operation(REMOVE, node1)]
+                                                  for path in partial_ops[x-1][y]])
+                    if costs[1] == min_cost:
+                        partial_ops[x][y].extend([path + [Operation(INSERT, arg2=node2)]
+                                                  for path in partial_ops[x][y-1]])
+                    if costs[2] == min_cost:
+                        op_type = MATCH if fd[x][y] == fd[x-1][y-1] else UPDATE
+                        partial_ops[x][y].extend([path + [Operation(op_type, node1, node2)]
+                                                  for path in partial_ops[x-1][y-1]])
+
+                    operations[x + ioff][y + joff] = partial_ops[x][y]
+                    treedists[x + ioff][y + joff] = fd[x][y]
+
+                else:
+                    p = Al[x + ioff] - 1 - ioff
+                    q = Bl[y + joff] - 1 - joff
+                    costs = [fd[x-1][y] + remove_cost(node1),
+                             fd[x][y-1] + insert_cost(node2),
+                             fd[p][q] + treedists[x + ioff][y + joff]]
+                    min_cost = min(costs)
+                    fd[x][y] = min_cost
+
+                    if costs[0] == min_cost:
+                        partial_ops[x][y].extend([path + [Operation(REMOVE, node1)]
+                                                  for path in partial_ops[x-1][y]])
+                    if costs[1] == min_cost:
+                        partial_ops[x][y].extend([path + [Operation(INSERT, arg2=node2)]
+                                                  for path in partial_ops[x][y-1]])
+                    if costs[2] == min_cost:
+                        partial_ops[x][y].extend([path + operations[x + ioff][y + joff]
+                                                  for path in partial_ops[p][q]])
+
+    for i in A.keyroots:
+        for j in B.keyroots:
+            treedist(i, j)
+
+    if return_operations:
+        return treedists[-1][-1], operations[-1][-1]
+    else:
+        return treedists[-1][-1]
+
+
+zss.distance = distance
+
+def simple_distance(A, B, get_children=Node.get_children,
+        get_label=Node.get_label, label_dist=strdist, return_operations=False):
+    return zss.distance(
+        A, B, get_children,
+        insert_cost=lambda node: label_dist('', get_label(node)),
+        remove_cost=lambda node: label_dist(get_label(node), ''),
+        update_cost=lambda a, b: label_dist(get_label(a), get_label(b)),
+        return_operations=return_operations
+    )
+
+zss.simple_distance = simple_distance
 
 #Return post-order traversal of non-leaf nodes (category nodes) from original representation (list)
 def post_order_traversal_named_entity(orig_named_entity: list, path_from_root=[], index_node=0) -> list:
@@ -123,7 +262,7 @@ def obtain_marked_transcriptions(marked_named_entity: list) -> list:
 
 
 #TODO: Make the method compute tagging error rate from tagging tree edit distance
-def obtain_tagged_and_marked_transcriptions(orig_ref_named_entity: list, orig_hyp_named_entity: list) -> tuple:
+def obtain_tagged_and_marked_transcriptions(orig_ref_named_entity: list, orig_hyp_named_entity: list) -> list[tuple]:
     #Cases where one NE is empty => mark all the elements in the other as "wrong"
     if len(orig_ref_named_entity) == 0:
         tagged_and_marked_ref_transc = []      
@@ -134,7 +273,7 @@ def obtain_tagged_and_marked_transcriptions(orig_ref_named_entity: list, orig_hy
         for idx, tagged_item in enumerate(tagged_hyp_transc):
             tagged_and_marked_hyp_transc.append((True, tagged_item[1], tagged_item[0]))
 
-        return (tagged_and_marked_ref_transc, tagged_and_marked_hyp_transc)
+        return [(tagged_and_marked_ref_transc, tagged_and_marked_hyp_transc)]
 
     elif len(orig_hyp_named_entity) == 0:
         tagged_and_marked_hyp_transc =  []
@@ -145,7 +284,7 @@ def obtain_tagged_and_marked_transcriptions(orig_ref_named_entity: list, orig_hy
         for idx, tagged_item in enumerate(tagged_ref_transc):
             tagged_and_marked_ref_transc.append((True, tagged_item[1], tagged_item[0]))
 
-        return (tagged_and_marked_ref_transc, tagged_and_marked_hyp_transc)
+        return [(tagged_and_marked_ref_transc, tagged_and_marked_hyp_transc)]
 
     #Construct Node object to represent tagging structure for zss computation of Tree Edit Distance
     hyp_ne = copy.deepcopy(orig_hyp_named_entity)
@@ -153,14 +292,15 @@ def obtain_tagged_and_marked_transcriptions(orig_ref_named_entity: list, orig_hy
     ref_tagging_tree = build_tagging_tree(ref_ne) 
     hyp_tagging_tree = build_tagging_tree(hyp_ne)
 
-    
-
     #Compute tree edit distance between reference and hypothesis tagging tree
     #to employ the best sequence of edit operations in a post-process
     (cost, operations) = simple_distance(ref_tagging_tree, 
                                          hyp_tagging_tree,
                                          label_dist=lambda a, b: int(a != b),
                                          return_operations=True)
+
+    print(len(operations),operations)
+    return [()]
 
     
     #Operations are given in post-order (left to right, depth first) over reference and
@@ -276,38 +416,42 @@ def calc_edit_dist(ref_ne: list, hyp_ne: list, tagging_weight = 1.0) -> float:
     if len(ref_ne) == 0 or len(hyp_ne) == 0:
         return 1.0
     
-    (ref_tagged_transcription, hyp_tagged_transcription) = obtain_tagged_and_marked_transcriptions(ref_ne, hyp_ne)
+    list_transcription_tuples = obtain_tagged_and_marked_transcriptions(ref_ne, hyp_ne)
+
+    list_edit_distances = []
 
     #Compute levenshtein distance considering marked elements and tags
-    LEN_VECTOR = len(ref_tagged_transcription)+1
-    prev_dist_vec = [0]*(LEN_VECTOR)
-    dist_vec = [0]*(LEN_VECTOR)
+    for (ref_tagged_transcription, hyp_tagged_transcription) in list_transcription_tuples:
+        LEN_VECTOR = len(ref_tagged_transcription)+1
+        prev_dist_vec = [0]*(LEN_VECTOR)
+        dist_vec = [0]*(LEN_VECTOR)
 
-    #Initialize previous vector
-    for i in range(LEN_VECTOR):
-        prev_dist_vec[i] = i
+        #Initialize previous vector
+        for i in range(LEN_VECTOR):
+            prev_dist_vec[i] = i
 
-    #Dynamic programming version of levenshtein distance
-    for j in range(1, len(hyp_tagged_transcription) + 1):
-        dist_vec[0] = j
-        for i in range(1, LEN_VECTOR):
-            dist_ins = 1 + dist_vec[i - 1]
-            dist_del = 1 + prev_dist_vec[i]
+        #Dynamic programming version of levenshtein distance
+        for j in range(1, len(hyp_tagged_transcription) + 1):
+            dist_vec[0] = j
+            for i in range(1, LEN_VECTOR):
+                dist_ins = 1 + dist_vec[i - 1]
+                dist_del = 1 + prev_dist_vec[i]
+                
+                transc_err = int(ref_tagged_transcription[i - 1][1] != hyp_tagged_transcription[j - 1][1])
+                if (ref_tagged_transcription[i - 1][0] == True #Reference marked as wrong
+                    or hyp_tagged_transcription[j - 1][0] == True #Hypothesis marked as wrong
+                    or ref_tagged_transcription[i - 1][2] != hyp_tagged_transcription[j - 1][2]): #Tagging does not match    
+                    cost_sus = tagging_weight + (1-tagging_weight) * transc_err
+                else:
+                    cost_sus = float(transc_err)
+                
+                dist_sus = prev_dist_vec[i - 1] + cost_sus
+
+                dist_vec[i] = min(dist_ins, dist_del, dist_sus)
             
-            transc_err = int(ref_tagged_transcription[i - 1][1] != hyp_tagged_transcription[j - 1][1])
-            if (ref_tagged_transcription[i - 1][0] == True #Reference marked as wrong
-                or hyp_tagged_transcription[j - 1][0] == True #Hypothesis marked as wrong
-                or ref_tagged_transcription[i - 1][2] != hyp_tagged_transcription[j - 1][2]): #Tagging does not match    
-                cost_sus = tagging_weight + (1-tagging_weight) * transc_err
-            else:
-                cost_sus = float(transc_err)
-            
-            dist_sus = prev_dist_vec[i - 1] + cost_sus
+            prev_dist_vec = copy.deepcopy(dist_vec)
+            dist_vec = [0] * (LEN_VECTOR)
 
-            dist_vec[i] = min(dist_ins, dist_del, dist_sus)
-        
-        prev_dist_vec = copy.deepcopy(dist_vec)
-        dist_vec = [0] * (LEN_VECTOR)
-
+        list_edit_distances.append(min(1.0, float(prev_dist_vec[-1]) / len(ref_tagged_transcription)))
     #Return saturated edit distance
-    return min(1.0, float(prev_dist_vec[-1]) / len(ref_tagged_transcription))
+    return min(list_edit_distances)
