@@ -222,7 +222,6 @@ h_10_ne = [
 #<1> A <2> B </2> </1>
 #Comparison gives 1 due to order in which tagging tree edit operations is considered
 #but should be 0.5
-print(calc_edit_dist(g_3_ne, h_10_ne))
 assert(calc_edit_dist(g_3_ne, h_10_ne)) == 0.5
 assert(calc_edit_dist(h_10_ne, g_3_ne)) == 0.5
 

@@ -158,9 +158,10 @@ def distance(A, B, get_children, insert_cost, remove_cost, update_cost,
                     if costs[1] == min_cost:
                         partial_ops[x][y].extend([path + [Operation(INSERT, arg2=node2)]
                                                   for path in partial_ops[x][y-1]])
-                    if costs[2] == min_cost:
-                        partial_ops[x][y].extend([path + operations[x + ioff][y + joff]
-                                                  for path in partial_ops[p][q]])
+                    if costs[2] == min_cost: 
+                        #operations[x][y] may contain a list of lists
+                        for op_list in operations[x + ioff][y + joff]:
+                            partial_ops[x][y].extend([path + op_list for path in partial_ops[p][q]])
 
     for i in A.keyroots:
         for j in B.keyroots:
@@ -293,114 +294,121 @@ def obtain_tagged_and_marked_transcriptions(orig_ref_named_entity: list, orig_hy
     hyp_tagging_tree = build_tagging_tree(hyp_ne)
 
     #Compute tree edit distance between reference and hypothesis tagging tree
-    #to employ the best sequence of edit operations in a post-process
+    #to employ the best sequences of edit operations in a post-process
     (cost, operations) = simple_distance(ref_tagging_tree, 
                                          hyp_tagging_tree,
                                          label_dist=lambda a, b: int(a != b),
                                          return_operations=True)
 
-    print(len(operations),operations)
-    return [()]
 
+    list_tagged_and_marked_ref_hyp_transc = list()
     
-    #Operations are given in post-order (left to right, depth first) over reference and
-    #when inserting, the order of insertions is also given in post-order.
-    post_order_ref = post_order_traversal_named_entity(ref_ne)
-    marks_ref = [False]*len(post_order_ref)
-    idx_traversal_ref = 0
-
-    post_order_hyp = post_order_traversal_named_entity(hyp_ne)
-    marks_hyp = [False]*len(post_order_hyp)
-    idx_traversal_hyp = 0
-
+    
     orig_ref_ne = copy.deepcopy(ref_ne)
     orig_hyp_ne = copy.deepcopy(hyp_ne)
 
-    for (idx,op) in enumerate(operations): 
-        path_node_ref = post_order_ref[idx_traversal_ref]
-        path_node_hyp = post_order_hyp[idx_traversal_hyp]
-        if op.type == op.remove:
-            #Since we have to remove the GT category, the text for the ref. node is wrong
-            marks_ref[idx_traversal_ref] = True
+    for op_seq in operations:
+        # print(op_seq)
+        #Operations are given in post-order (left to right, depth first) over reference and
+        #when inserting, the order of insertions is also given in post-order.
+        post_order_ref = post_order_traversal_named_entity(orig_ref_ne)
+        marks_ref = [False]*len(post_order_ref)
+        idx_traversal_ref = 0
 
-            #Traverse the reference ne to find node
-            node_to_modify = ref_ne
-            father_node = ref_ne
-            for node_step in path_node_ref[1:]:
-                father_node = node_to_modify
-                node_to_modify = node_to_modify[CHILDREN][node_step[1]]
+        post_order_hyp = post_order_traversal_named_entity(orig_hyp_ne)
+        marks_hyp = [False]*len(post_order_hyp)
+        idx_traversal_hyp = 0
+
+        ref_ne = copy.deepcopy(orig_ref_ne)
+        hyp_ne = copy.deepcopy(orig_hyp_ne)    
+
+        for (idx,op) in enumerate(op_seq): 
+            path_node_ref = post_order_ref[idx_traversal_ref]
+            path_node_hyp = post_order_hyp[idx_traversal_hyp]
+            if op.type == op.remove:
+                #Since we have to remove the GT category, the text for the ref. node is wrong
+                marks_ref[idx_traversal_ref] = True
+
+                #Traverse the reference ne to find node
+                node_to_modify = ref_ne
+                father_node = ref_ne
+                for node_step in path_node_ref[1:]:
+                    father_node = node_to_modify
+                    node_to_modify = node_to_modify[CHILDREN][node_step[1]]
+                
+                #Delete child category by slicing the father
+                #Insert the text from the removed node into the father
+                slicing_point = path_node_ref[-1][1]
+                father_node[CHILDREN] = (father_node[CHILDREN][:slicing_point] +
+                                        node_to_modify[CHILDREN] +
+                                        father_node[CHILDREN][slicing_point+1:])
+
+                #Deletion of node (match op.arg1 -> None), advance in traversal for ref. tree
+                idx_traversal_ref += 1
+            elif op.type == op.insert:
+                #Since we have to insert the hypothesized category, the text for the hyp. node is wrong
+                marks_hyp[idx_traversal_hyp] = True
+
+                #An insertion in the reference tree is going to be treated as a deletion in hyp. tree
+                #Traverse the hyp ne to find node
+                node_to_modify = hyp_ne
+                father_node = hyp_ne
+                for node_step in path_node_hyp[1:]:
+                    father_node = node_to_modify
+                    node_to_modify = node_to_modify[CHILDREN][node_step[1]]
+                
+                #Delete child category by slicing the father
+                #Insert the text from the removed node into the father
+                slicing_point = path_node_hyp[-1][1]
+                father_node[CHILDREN] = (father_node[CHILDREN][:slicing_point] +
+                                        node_to_modify[CHILDREN] +
+                                        father_node[CHILDREN][slicing_point+1:])
+
+                #Insertion of node (match None -> op.arg2), advance in traversal for hyp. tree
+                idx_traversal_hyp += 1
+            elif op.type == op.update:
+                #Since we have to update the label, the text for both ref. and hyp. nodes is wrong
+                marks_ref[idx_traversal_ref] = True
+                marks_hyp[idx_traversal_hyp] = True
+
+                #Traverse the reference ne to find node
+                node_to_modify = ref_ne
+                for node_step in path_node_ref[1:]:
+                    node_to_modify = node_to_modify[CHILDREN][node_step[1]]
+                
+                #Update the label in reference 
+                node_to_modify[CATEGORY] = str(Node.get_label(op.arg2))
+
+                #Label substitution, advance in the post-order traversal for both tagging trees 
+                idx_traversal_hyp += 1
+                idx_traversal_ref += 1
+            elif op.type == op.match:
+                #Perfect node match, advance in the post-order traversal for both tagging trees
+                idx_traversal_hyp += 1
+                idx_traversal_ref += 1
             
-            #Delete child category by slicing the father
-            #Insert the text from the removed node into the father
-            slicing_point = path_node_ref[-1][1]
-            father_node[CHILDREN] = (father_node[CHILDREN][:slicing_point] +
-                                     node_to_modify[CHILDREN] +
-                                     father_node[CHILDREN][slicing_point+1:])
-
-            #Deletion of node (match op.arg1 -> None), advance in traversal for ref. tree
-            idx_traversal_ref += 1
-        elif op.type == op.insert:
-            #Since we have to insert the hypothesized category, the text for the hyp. node is wrong
-            marks_hyp[idx_traversal_hyp] = True
-
-            #An insertion in the reference tree is going to be treated as a deletion in hyp. tree
-            #Traverse the hyp ne to find node
-            node_to_modify = hyp_ne
-            father_node = hyp_ne
-            for node_step in path_node_hyp[1:]:
-                father_node = node_to_modify
-                node_to_modify = node_to_modify[CHILDREN][node_step[1]]
-            
-            #Delete child category by slicing the father
-            #Insert the text from the removed node into the father
-            slicing_point = path_node_hyp[-1][1]
-            father_node[CHILDREN] = (father_node[CHILDREN][:slicing_point] +
-                                     node_to_modify[CHILDREN] +
-                                     father_node[CHILDREN][slicing_point+1:])
-
-            #Insertion of node (match None -> op.arg2), advance in traversal for hyp. tree
-            idx_traversal_hyp += 1
-        elif op.type == op.update:
-            #Since we have to update the label, the text for both ref. and hyp. nodes is wrong
-            marks_ref[idx_traversal_ref] = True
-            marks_hyp[idx_traversal_hyp] = True
-
-            #Traverse the reference ne to find node
-            node_to_modify = ref_ne
-            for node_step in path_node_ref[1:]:
-                node_to_modify = node_to_modify[CHILDREN][node_step[1]]
-            
-            #Update the label in reference 
-            node_to_modify[CATEGORY] = str(Node.get_label(op.arg2))
-
-            #Label substitution, advance in the post-order traversal for both tagging trees 
-            idx_traversal_hyp += 1
-            idx_traversal_ref += 1
-        elif op.type == op.match:
-            #Perfect node match, advance in the post-order traversal for both tagging trees
-            idx_traversal_hyp += 1
-            idx_traversal_ref += 1
         
+        tagged_ref_transc = obtain_list_tagged_transcriptions(ref_ne, dict())
+        marked_ref_ne = add_marks_to_named_entity(orig_ref_ne, marks_ref)
+        marked_ref_transc = obtain_marked_transcriptions(marked_ref_ne)
+        
+        tagged_hyp_transc = obtain_list_tagged_transcriptions(hyp_ne, dict())
+        marked_hyp_ne = add_marks_to_named_entity(orig_hyp_ne, marks_hyp)
+        marked_hyp_transc = obtain_marked_transcriptions(marked_hyp_ne)
+
+        tagged_and_marked_ref_transc = []
+        for idx, tagged_item in enumerate(tagged_ref_transc):
+            marked_item = marked_ref_transc[idx]
+            tagged_and_marked_ref_transc.append((marked_item[0], tagged_item[1], tagged_item[0]))
+
+        tagged_and_marked_hyp_transc = []
+        for idx, tagged_item in enumerate(tagged_hyp_transc):
+            marked_item = marked_hyp_transc[idx]
+            tagged_and_marked_hyp_transc.append((marked_item[0], tagged_item[1], tagged_item[0]))
+
+        list_tagged_and_marked_ref_hyp_transc.append((tagged_and_marked_ref_transc, tagged_and_marked_hyp_transc))
     
-    tagged_ref_transc = obtain_list_tagged_transcriptions(ref_ne, dict())
-    marked_ref_ne = add_marks_to_named_entity(orig_ref_ne, marks_ref)
-    marked_ref_transc = obtain_marked_transcriptions(marked_ref_ne)
-    
-    tagged_hyp_transc = obtain_list_tagged_transcriptions(hyp_ne, dict())
-    marked_hyp_ne = add_marks_to_named_entity(orig_hyp_ne, marks_hyp)
-    marked_hyp_transc = obtain_marked_transcriptions(marked_hyp_ne)
-
-    tagged_and_marked_ref_transc = []
-    for idx, tagged_item in enumerate(tagged_ref_transc):
-        marked_item = marked_ref_transc[idx]
-        tagged_and_marked_ref_transc.append((marked_item[0], tagged_item[1], tagged_item[0]))
-
-    tagged_and_marked_hyp_transc = []
-    for idx, tagged_item in enumerate(tagged_hyp_transc):
-        marked_item = marked_hyp_transc[idx]
-        tagged_and_marked_hyp_transc.append((marked_item[0], tagged_item[1], tagged_item[0]))
-
-    return (tagged_and_marked_ref_transc, tagged_and_marked_hyp_transc)
+    return list_tagged_and_marked_ref_hyp_transc
     
 
 #Given 2 lists of tagged marked transcriptions, compute edit distance. Transcriptions incorporate the tag for each token
@@ -416,12 +424,12 @@ def calc_edit_dist(ref_ne: list, hyp_ne: list, tagging_weight = 1.0) -> float:
     if len(ref_ne) == 0 or len(hyp_ne) == 0:
         return 1.0
     
-    list_transcription_tuples = obtain_tagged_and_marked_transcriptions(ref_ne, hyp_ne)
+    list_tagged_and_marked_transcription_tuples = obtain_tagged_and_marked_transcriptions(ref_ne, hyp_ne)
 
     list_edit_distances = []
 
     #Compute levenshtein distance considering marked elements and tags
-    for (ref_tagged_transcription, hyp_tagged_transcription) in list_transcription_tuples:
+    for (ref_tagged_transcription, hyp_tagged_transcription) in list_tagged_and_marked_transcription_tuples:
         LEN_VECTOR = len(ref_tagged_transcription)+1
         prev_dist_vec = [0]*(LEN_VECTOR)
         dist_vec = [0]*(LEN_VECTOR)
