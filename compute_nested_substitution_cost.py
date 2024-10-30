@@ -172,7 +172,6 @@ def distance(A, B, get_children, insert_cost, remove_cost, update_cost,
     else:
         return treedists[-1][-1]
 
-
 zss.distance = distance
 
 def simple_distance(A, B, get_children=Node.get_children,
@@ -431,19 +430,22 @@ def calc_edit_dist(ref_ne: list, hyp_ne: list, tagging_weight = 1.0) -> float:
     #Compute levenshtein distance considering marked elements and tags
     for (ref_tagged_transcription, hyp_tagged_transcription) in list_tagged_and_marked_transcription_tuples:
         LEN_VECTOR = len(ref_tagged_transcription)+1
-        prev_dist_vec = [0]*(LEN_VECTOR)
-        dist_vec = [0]*(LEN_VECTOR)
+        #Vectors of two components -> cost of path and length of  path
+        prev_dist_vec = [[0,0] for _ in range(LEN_VECTOR)]
+        dist_vec = [[0,0] for _ in range(LEN_VECTOR)]
 
         #Initialize previous vector
         for i in range(LEN_VECTOR):
-            prev_dist_vec[i] = i
+            prev_dist_vec[i][0] = i
+            prev_dist_vec[i][1] = i
 
         #Dynamic programming version of levenshtein distance
         for j in range(1, len(hyp_tagged_transcription) + 1):
-            dist_vec[0] = j
+            dist_vec[0][0] = j
+            dist_vec[0][1] = j
             for i in range(1, LEN_VECTOR):
-                dist_ins = 1 + dist_vec[i - 1]
-                dist_del = 1 + prev_dist_vec[i]
+                dist_ins = 1 + dist_vec[i - 1][0]
+                dist_del = 1 + prev_dist_vec[i][0]
                 
                 transc_err = int(ref_tagged_transcription[i - 1][1] != hyp_tagged_transcription[j - 1][1])
                 if (ref_tagged_transcription[i - 1][0] == True #Reference marked as wrong
@@ -451,15 +453,28 @@ def calc_edit_dist(ref_ne: list, hyp_ne: list, tagging_weight = 1.0) -> float:
                     or ref_tagged_transcription[i - 1][2] != hyp_tagged_transcription[j - 1][2]): #Tagging does not match    
                     cost_sus = tagging_weight + (1-tagging_weight) * transc_err
                 else:
-                    cost_sus = float(transc_err)
+                    cost_sus = transc_err
                 
-                dist_sus = prev_dist_vec[i - 1] + cost_sus
+                dist_sus = prev_dist_vec[i - 1][0] + cost_sus
 
-                dist_vec[i] = min(dist_ins, dist_del, dist_sus)
-            
+                min_dist = min(dist_ins, dist_del, dist_sus)
+                dist_vec[i][0] = min_dist
+                path_lens = []
+                # print(min_dist, dist_ins, dist_del, dist_sus)
+                if dist_ins == min_dist:
+                    path_lens.append(dist_vec[i - 1][1] + 1)
+                if dist_del == min_dist:
+                    path_lens.append(prev_dist_vec[i][1] + 1)
+                if dist_sus == min_dist:
+                    path_lens.append(prev_dist_vec[i - 1][1] + 1)
+                # print(path_lens)
+                dist_vec[i][1] = max(path_lens)
             prev_dist_vec = copy.deepcopy(dist_vec)
-            dist_vec = [0] * (LEN_VECTOR)
+            # print(prev_dist_vec)
+            dist_vec = [[0,0] for _ in range(LEN_VECTOR)]
 
-        list_edit_distances.append(min(1.0, float(prev_dist_vec[-1]) / len(ref_tagged_transcription)))
+        delta_o_x_y = float(prev_dist_vec[-1][0]) / prev_dist_vec[-1][1]
+        list_edit_distances.append(delta_o_x_y)
     #Return saturated edit distance
+    print(min(list_edit_distances))
     return min(list_edit_distances)

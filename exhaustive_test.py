@@ -73,6 +73,31 @@ g_3_ne = [
         ]
     ]
 ] 
+# <1> <2> A </2> <2> B </2> <2> C </2> <2> D </2> </1>
+g_4_ne = [
+    "1", [
+        [
+            "2", [
+                "A"
+            ]
+        ],
+        [
+            "2", [
+                "B"
+            ]
+        ],
+        [
+            "2", [
+                "C"
+            ]
+        ],
+        [
+            "2", [
+                "D"
+            ]
+        ]
+    ]
+]
 
 # Empty NE
 h_0_ne = []
@@ -223,7 +248,12 @@ h_10_ne = [
 #Comparison gives 1 due to order in which tagging tree edit operations is considered
 #but should be 0.5
 assert(calc_edit_dist(g_3_ne, h_10_ne)) == 0.5
+# print(calc_edit_dist(g_3_ne, h_10_ne))
 assert(calc_edit_dist(h_10_ne, g_3_ne)) == 0.5
+
+assert(calc_edit_dist(g_4_ne, h_10_ne)) == 0.75
+#Case of saturated error (3 errors / 2 entitites) -> 1.0
+assert(calc_edit_dist(h_10_ne, g_4_ne)) == 0.75
 
 assert calc_edit_dist(g_0_ne, h_0_ne) == 1.0
 assert calc_edit_dist(h_0_ne, g_0_ne) == 1.0
@@ -232,10 +262,10 @@ assert abs(0.33333333 - calc_edit_dist(g_0_ne, h_1_ne)) < 0.0001
 assert abs(0.33333333 - calc_edit_dist(h_1_ne, g_0_ne)) < 0.0001
 
 assert abs(0.33333333 - calc_edit_dist(g_0_ne, h_2_ne)) < 0.0001
-assert abs(0.5 - calc_edit_dist(h_2_ne, g_0_ne)) < 0.0001
+assert abs(0.33333333 - calc_edit_dist(h_2_ne, g_0_ne)) < 0.0001
 
 assert abs(0.33333333 - calc_edit_dist(g_0_ne, h_3_ne)) < 0.0001
-assert abs(0.5 - calc_edit_dist(h_3_ne, g_0_ne)) < 0.0001
+assert abs(0.33333333 - calc_edit_dist(h_3_ne, g_0_ne)) < 0.0001
 
 assert (calc_edit_dist(h_4_ne, g_0_ne)) == 1.0
 assert (calc_edit_dist(g_0_ne, h_4_ne)) == 1.0
@@ -244,10 +274,10 @@ assert calc_edit_dist(g_0_ne, h_5_ne) == 1.0
 assert calc_edit_dist(h_5_ne, g_0_ne) == 1.0
 
 assert calc_edit_dist(g_1_ne_word, h_6_ne_word) == 0.5
-assert calc_edit_dist(h_6_ne_word, g_1_ne_word) == 1.0
+assert calc_edit_dist(h_6_ne_word, g_1_ne_word) == 0.5
 
 assert abs(0.647058824 - calc_edit_dist(g_1_ne_char, h_6_ne_char)) < 0.0001
-assert calc_edit_dist(h_6_ne_char, g_1_ne_char) == 1.0
+assert abs(0.647058824 - calc_edit_dist(h_6_ne_char, g_1_ne_char)) < 0.0001
 
 assert calc_edit_dist(g_1_ne_word, h_7_ne_word) == 1.0
 assert calc_edit_dist(h_7_ne_word, g_1_ne_word) == 1.0
