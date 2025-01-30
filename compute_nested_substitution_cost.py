@@ -426,6 +426,8 @@ def calc_edit_dist(ref_ne: list, hyp_ne: list, tagging_weight = 1.0) -> float:
     list_tagged_and_marked_transcription_tuples = obtain_tagged_and_marked_transcriptions(ref_ne, hyp_ne)
 
     list_edit_distances = []
+    list_costs = []
+    list_sizes = []
 
     #Compute levenshtein distance considering marked elements and tags
     for (ref_tagged_transcription, hyp_tagged_transcription) in list_tagged_and_marked_transcription_tuples:
@@ -475,6 +477,15 @@ def calc_edit_dist(ref_ne: list, hyp_ne: list, tagging_weight = 1.0) -> float:
 
         delta_o_x_y = float(prev_dist_vec[-1][0]) / prev_dist_vec[-1][1]
         list_edit_distances.append(delta_o_x_y)
+        list_costs.append(prev_dist_vec[-1][0])
+        list_sizes.append(prev_dist_vec[-1][1])
     #Return saturated edit distance
-    print(min(list_edit_distances))
-    return min(list_edit_distances)
+    min_delta_o_x_y = min(list_edit_distances)
+    #print(min_delta_o_x_y)
+    
+    index_min = 0
+    for i,delta_o_x_y in enumerate(list_edit_distances):
+        if delta_o_x_y == min_delta_o_x_y:
+            index_min = i
+
+    return min_delta_o_x_y,list_costs[index_min],list_sizes[index_min]
