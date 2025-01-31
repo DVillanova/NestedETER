@@ -243,6 +243,47 @@ h_10_ne = [
     ]
 ]
 
+hyp_real_case_ne = [
+    'persName', [
+        'kunge', 
+        'Karle,', 
+        'als', 
+        'einem', 
+        'kunge', 
+        'zu', 
+        [
+            'placeName', [
+                'Beheim'
+            ]
+        ], 
+        ',', 
+        'sinen', 
+        'erben', 
+        'und', 
+        'nachkumen,', 
+        'kungen', 
+        'zu', 
+        [
+            'placeName', [
+                'Behem'
+            ]
+        ], 
+        ',', 
+        'und', 
+        'der', 
+        'cronen', 
+        'des', 
+        'selben', 
+        'kungrichte,', 
+        'daz', 
+        'wir', 
+        'in', 
+        'zu', 
+        'den'
+    ]
+]
+
+
 #<1> <2> A </2> <2> B </2> </1>
 #<1> A <2> B </2> </1>
 #Comparison gives 1 due to order in which tagging tree edit operations is considered
@@ -255,7 +296,7 @@ assert(calc_edit_dist(g_4_ne, h_10_ne)[0]) == 0.75
 #Case of saturated error (3 errors / 2 entitites) -> 1.0
 assert(calc_edit_dist(h_10_ne, g_4_ne)[0]) == 0.75
 
-assert calc_edit_dist(g_0_ne, h_0_ne)[0] == 1.0
+assert (calc_edit_dist(g_0_ne, h_0_ne)[0]) == 1.0
 assert calc_edit_dist(h_0_ne, g_0_ne)[0] == 1.0
 
 assert abs(0.33333333 - calc_edit_dist(g_0_ne, h_1_ne)[0]) < 0.0001
@@ -291,3 +332,4 @@ assert calc_edit_dist(h_8_ne, g_2_ne)[0] == 0.25
 assert calc_edit_dist(g_2_ne, h_9_ne)[0] == 0.5
 assert calc_edit_dist(h_9_ne, g_2_ne)[0] == 0.5
 
+print("SUCCESSFULLY RAN ALL TESTS")

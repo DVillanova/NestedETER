@@ -26,6 +26,7 @@ except ImportError:
         else:
             return 1
 
+artificial_root_category = "ARTIFICIAL_ROOT"
 CATEGORY = 0
 CHILDREN = 1
 MARK = 2
@@ -45,6 +46,7 @@ def build_tagging_tree(named_entity: list) -> Node:
     current_depth_index = 0
     while len(queue_nodes_to_visit_current_depth) > 0:
         (path_from_root, node_tuple) = queue_nodes_to_visit_current_depth.pop(0)
+        
         #Locate where to insert category of node_tuple in tagging_tree
         parent_node = tagging_tree
         for index_path in path_from_root:
@@ -57,7 +59,7 @@ def build_tagging_tree(named_entity: list) -> Node:
         path_from_root.append(current_depth_index)
         for subtree in node_tuple[CHILDREN]: 
             if isinstance(subtree, list):
-                queue_nodes_to_visit_next_depth.append((path_from_root, subtree))
+                queue_nodes_to_visit_next_depth.append((copy.deepcopy(path_from_root), subtree))
 
         #Update counter of index current depth
         current_depth_index += 1
@@ -307,24 +309,36 @@ def obtain_tagged_and_marked_transcriptions(orig_ref_named_entity: list, orig_hy
     orig_hyp_ne = copy.deepcopy(hyp_ne)
 
     for op_seq in operations:
-        # print(op_seq)
         #Operations are given in post-order (left to right, depth first) over reference and
         #when inserting, the order of insertions is also given in post-order.
         post_order_ref = post_order_traversal_named_entity(orig_ref_ne)
         marks_ref = [False]*len(post_order_ref)
         idx_traversal_ref = 0
+        removed_nodes = 0
 
         post_order_hyp = post_order_traversal_named_entity(orig_hyp_ne)
         marks_hyp = [False]*len(post_order_hyp)
         idx_traversal_hyp = 0
+        inserted_nodes = 0
 
         ref_ne = copy.deepcopy(orig_ref_ne)
         hyp_ne = copy.deepcopy(orig_hyp_ne)    
 
+
         for (idx,op) in enumerate(op_seq): 
-            path_node_ref = post_order_ref[idx_traversal_ref]
-            path_node_hyp = post_order_hyp[idx_traversal_hyp]
+            if idx_traversal_ref < len(post_order_ref):
+                path_node_ref = post_order_ref[idx_traversal_ref]
+            else:
+                path_node_ref = False
+
+            if idx_traversal_hyp < len(post_order_hyp):
+                path_node_hyp = post_order_hyp[idx_traversal_hyp]
+            else:
+                path_node_hyp = False
+            
+            
             if op.type == op.remove:
+                removed_nodes += 1
                 #Since we have to remove the GT category, the text for the ref. node is wrong
                 marks_ref[idx_traversal_ref] = True
 
@@ -342,9 +356,13 @@ def obtain_tagged_and_marked_transcriptions(orig_ref_named_entity: list, orig_hy
                                         node_to_modify[CHILDREN] +
                                         father_node[CHILDREN][slicing_point+1:])
 
+                #Recompute post-order to account for changes in NE structure
+                post_order_ref = [[]]*removed_nodes + post_order_traversal_named_entity(ref_ne)
+
                 #Deletion of node (match op.arg1 -> None), advance in traversal for ref. tree
                 idx_traversal_ref += 1
             elif op.type == op.insert:
+                inserted_nodes += 1
                 #Since we have to insert the hypothesized category, the text for the hyp. node is wrong
                 marks_hyp[idx_traversal_hyp] = True
 
@@ -362,6 +380,9 @@ def obtain_tagged_and_marked_transcriptions(orig_ref_named_entity: list, orig_hy
                 father_node[CHILDREN] = (father_node[CHILDREN][:slicing_point] +
                                         node_to_modify[CHILDREN] +
                                         father_node[CHILDREN][slicing_point+1:])
+
+                #Recompute post-order to account for changes in NE structure
+                post_order_hyp = [[]]*inserted_nodes + post_order_traversal_named_entity(hyp_ne)
 
                 #Insertion of node (match None -> op.arg2), advance in traversal for hyp. tree
                 idx_traversal_hyp += 1
@@ -391,9 +412,11 @@ def obtain_tagged_and_marked_transcriptions(orig_ref_named_entity: list, orig_hy
         marked_ref_ne = add_marks_to_named_entity(orig_ref_ne, marks_ref)
         marked_ref_transc = obtain_marked_transcriptions(marked_ref_ne)
         
+        
         tagged_hyp_transc = obtain_list_tagged_transcriptions(hyp_ne, dict())
         marked_hyp_ne = add_marks_to_named_entity(orig_hyp_ne, marks_hyp)
         marked_hyp_transc = obtain_marked_transcriptions(marked_hyp_ne)
+        
 
         tagged_and_marked_ref_transc = []
         for idx, tagged_item in enumerate(tagged_ref_transc):
@@ -414,15 +437,18 @@ def obtain_tagged_and_marked_transcriptions(orig_ref_named_entity: list, orig_hy
 #and a mark (boolean) to indicate whether the substitution cost for that token must always be one (True) or can be computed
 #normally (False). Therefore, each element is a tuple of three elements (MARKED: {True, False}, token: str, tag: str)
 #if it is necessary to compute char-level edit distance, the elements must be split previously
-def calc_edit_dist(ref_ne: list, hyp_ne: list, tagging_weight = 1.0) -> float:
+def calc_edit_dist(ref_ne: list, hyp_ne: list, tagging_weight = 1.0) -> tuple[float,float,float]:
     #Exception: substituting empty NE with empty NE
     if len(ref_ne) == 0 and len(hyp_ne) == 0:
         raise Exception("Reference entity and hypothesized entity were of size 0")
 
     #Substituting an empty NE with a normal NE, cost 1
     if len(ref_ne) == 0 or len(hyp_ne) == 0:
-        return 1.0
+        return 1.0, len(ref_ne)+len(hyp_ne), len(ref_ne)+len(hyp_ne)
     
+
+    ref_ne = [artificial_root_category, [ref_ne]]
+    hyp_ne = [artificial_root_category, [hyp_ne]]
     list_tagged_and_marked_transcription_tuples = obtain_tagged_and_marked_transcriptions(ref_ne, hyp_ne)
 
     list_edit_distances = []
@@ -462,17 +488,16 @@ def calc_edit_dist(ref_ne: list, hyp_ne: list, tagging_weight = 1.0) -> float:
                 min_dist = min(dist_ins, dist_del, dist_sus)
                 dist_vec[i][0] = min_dist
                 path_lens = []
-                # print(min_dist, dist_ins, dist_del, dist_sus)
                 if dist_ins == min_dist:
                     path_lens.append(dist_vec[i - 1][1] + 1)
                 if dist_del == min_dist:
                     path_lens.append(prev_dist_vec[i][1] + 1)
                 if dist_sus == min_dist:
                     path_lens.append(prev_dist_vec[i - 1][1] + 1)
-                # print(path_lens)
                 dist_vec[i][1] = max(path_lens)
+
             prev_dist_vec = copy.deepcopy(dist_vec)
-            # print(prev_dist_vec)
+            
             dist_vec = [[0,0] for _ in range(LEN_VECTOR)]
 
         delta_o_x_y = float(prev_dist_vec[-1][0]) / prev_dist_vec[-1][1]
@@ -481,7 +506,6 @@ def calc_edit_dist(ref_ne: list, hyp_ne: list, tagging_weight = 1.0) -> float:
         list_sizes.append(prev_dist_vec[-1][1])
     #Return saturated edit distance
     min_delta_o_x_y = min(list_edit_distances)
-    #print(min_delta_o_x_y)
     
     index_min = 0
     for i,delta_o_x_y in enumerate(list_edit_distances):
