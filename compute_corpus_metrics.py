@@ -4,12 +4,14 @@ import pickle
 from compute_nested_substitution_cost import calc_edit_dist, count_number_tokens_named_entity
 import typing
 from math import sqrt
+import copy
 
 from munkres import Munkres
 
 # Global Munkres algorithm
 M = Munkres()
 
+#Given two lists of NEs, return matrices of cost and size of substitution operations considering micro average
 def generate_micro_cost_and_lengths_matrices(list_ref_ne_trees: list, list_hyp_ne_trees: list) -> tuple[list,list]:
     matrix_size = len(list_ref_ne_trees) + len(list_hyp_ne_trees)
     costs = list()
@@ -52,6 +54,7 @@ def generate_micro_cost_and_lengths_matrices(list_ref_ne_trees: list, list_hyp_n
     
     return costs,lengths
 
+#Given two lists of NEs, return matrices of cost and size of substitution operations considering macro average
 def generate_macro_cost_and_lengths_matrices(list_ref_ne_trees: list, list_hyp_ne_trees: list) -> tuple[list,list]:
     matrix_size = len(list_ref_ne_trees) + len(list_hyp_ne_trees)
     costs = list()
@@ -78,7 +81,7 @@ def generate_macro_cost_and_lengths_matrices(list_ref_ne_trees: list, list_hyp_n
     
     return costs,lengths
     
-
+#Compute micro-averaged unordered ETER score for a whole corpus, considering a list of NEs for each document in the corpus
 def compute_micro_eter(list_ref_doc_nes: list, list_hyp_doc_nes: list) -> float:
     numerator = 0.0
     denominator = 0.0
@@ -122,7 +125,7 @@ def compute_micro_eter(list_ref_doc_nes: list, list_hyp_doc_nes: list) -> float:
     return (numerator / denominator)*100.0
 
 
-        
+#Compute macro-averaged unordered ETER score for a whole corpus, considering a list of NEs for each document in the corpus
 def compute_macro_eter(list_ref_doc_nes: list, list_hyp_doc_nes: list) -> float:
 
     numerator = 0.0
@@ -159,11 +162,173 @@ def compute_macro_eter(list_ref_doc_nes: list, list_hyp_doc_nes: list) -> float:
 
     return (numerator / denominator)*100.0
 
+#Compute edit distance between sequences of NEs -> return cost of the path and length of the path
+def compute_macro_levenshtein(list_ref_ne_trees: list, list_hyp_ne_trees: list) -> tuple[float,float]:
+    
+    LEN_VECTOR = len(list_ref_ne_trees)+1
+    #Vectors of two components -> cost of path and length of  path
+    prev_dist_vec = [[0,0] for _ in range(LEN_VECTOR)]
+    dist_vec = [[0,0] for _ in range(LEN_VECTOR)]
+
+    #Initialize previous vector
+    for i in range(LEN_VECTOR):
+        prev_dist_vec[i][0] = i
+        prev_dist_vec[i][1] = i
+
+    #Dynamic programming version of levenshtein distance
+    for j in range(1, len(list_hyp_ne_trees) + 1):
+        dist_vec[0][0] = j
+        dist_vec[0][1] = j
+
+        j_hyp_ne = list_hyp_ne_trees[j-1]
+
+        for i in range(1, LEN_VECTOR):
+            i_ref_ne = list_ref_ne_trees[i-1]
+            dist_ins = 1 + dist_vec[i - 1][0]
+            dist_del = 1 + prev_dist_vec[i][0]
+            cost_sus, _, _ = calc_edit_dist(ref_ne=i_ref_ne, hyp_ne=j_hyp_ne)
+            
+            dist_sus = prev_dist_vec[i - 1][0] + cost_sus
+
+            min_dist = min(dist_ins, dist_del, dist_sus)
+            dist_vec[i][0] = min_dist
+            path_lens = []
+            if dist_ins == min_dist:
+                path_lens.append(dist_vec[i - 1][1] + 1)
+            if dist_del == min_dist:
+                path_lens.append(prev_dist_vec[i][1] + 1)
+            if dist_sus == min_dist:
+                path_lens.append(prev_dist_vec[i - 1][1] + 1)
+            dist_vec[i][1] = max(path_lens)
+
+        prev_dist_vec = copy.deepcopy(dist_vec)
+        dist_vec = [[0,0] for _ in range(LEN_VECTOR)]
+
+    return prev_dist_vec[-1][0], prev_dist_vec[-1][1]
 
 
-# def compute_micro_eter():
-# def compute_ordered_macro_eter():
-# def compute_ordered_micro_eter():
+def compute_micro_levenshtein(list_ref_ne_trees: list, list_hyp_ne_trees: list) -> tuple[float,float]:
+    LEN_VECTOR = len(list_ref_ne_trees)+1
+    #Vectors of two components -> cost of path and length of  path
+    prev_dist_vec = [[0,0] for _ in range(LEN_VECTOR)]
+    dist_vec = [[0,0] for _ in range(LEN_VECTOR)]
+
+    #Initialize previous vector
+    for i in range(1,LEN_VECTOR):
+        i_ref_ne = list_ref_ne_trees[i-1]
+        prev_dist_vec[i][0] = prev_dist_vec[i-1][0] + count_number_tokens_named_entity(i_ref_ne)
+        prev_dist_vec[i][1] = prev_dist_vec[i-1][1] + count_number_tokens_named_entity(i_ref_ne)
+
+    #Dynamic programming version of levenshtein distance
+    for j in range(1, len(list_hyp_ne_trees) + 1):
+        j_hyp_ne = list_hyp_ne_trees[j-1]
+        
+        dist_vec[0][0] = prev_dist_vec[0][0] + count_number_tokens_named_entity(j_hyp_ne)
+        dist_vec[0][1] = prev_dist_vec[0][1] + count_number_tokens_named_entity(j_hyp_ne)
+
+        
+
+        for i in range(1, LEN_VECTOR):
+            i_ref_ne = list_ref_ne_trees[i-1]
+            
+            dist_ins = count_number_tokens_named_entity(i_ref_ne) + dist_vec[i - 1][0]
+            length_ins = count_number_tokens_named_entity(i_ref_ne) + dist_vec[i - 1][1]
+
+            dist_del = count_number_tokens_named_entity(j_hyp_ne) + prev_dist_vec[i][0]
+            length_del = count_number_tokens_named_entity(j_hyp_ne) + prev_dist_vec[i][1]
+
+            _, cost_sus, size_sus = calc_edit_dist(ref_ne=i_ref_ne, hyp_ne=j_hyp_ne)
+            length_sus = prev_dist_vec[i - 1][1] + size_sus
+            
+            dist_sus = prev_dist_vec[i - 1][0] + cost_sus
+
+            min_dist = min(dist_ins, dist_del, dist_sus)
+            dist_vec[i][0] = min_dist
+            path_lens = []
+            if dist_ins == min_dist:
+                path_lens.append(length_ins)
+            if dist_del == min_dist:
+                path_lens.append(length_del)
+            if dist_sus == min_dist:
+                path_lens.append(length_sus)
+            dist_vec[i][1] = max(path_lens)
+
+        prev_dist_vec = copy.deepcopy(dist_vec)
+        dist_vec = [[0,0] for _ in range(LEN_VECTOR)]
+
+    return prev_dist_vec[-1][0], prev_dist_vec[-1][1]
+
+#Compute micro-averaged ordered ETER score for a whole corpus, considering a list of NEs for each document in the corpus
+def compute_micro_ordered_eter(list_ref_doc_nes: list, list_hyp_doc_nes: list) -> float:
+    numerator = 0.0
+    denominator = 0.0
+
+    number_ref_nes = 0
+    number_hyp_nes = 0
+
+    for doc_i, list_ref_ne_trees in enumerate(list_ref_doc_nes):
+        list_hyp_ne_trees = list_hyp_doc_nes[doc_i]
+
+        number_ref_nes += len(list_ref_ne_trees)
+        number_hyp_nes += len(list_hyp_ne_trees)
+
+        #If neither reference nor hypothesis contain NEs, skip
+        if len(list_ref_ne_trees) == 0 and len(list_hyp_ne_trees) == 0:
+            pass
+        #If only GT contains NEs => all NEs are considered as errors
+        elif (len(list_ref_ne_trees) != 0 and len(list_hyp_ne_trees) == 0):
+            list_number_tokens_ref_nes = [count_number_tokens_named_entity(named_entity) for named_entity in list_ref_ne_trees]
+            number_tokens_ref_doc = sum(list_number_tokens_ref_nes)
+            numerator += number_tokens_ref_doc
+            denominator += number_tokens_ref_doc
+        #If only HYP contains NEs => all NEs are considered as errors
+        elif (len(list_ref_ne_trees) == 0 and len(list_hyp_ne_trees) != 0):
+            list_number_tokens_hyp_nes = [count_number_tokens_named_entity(named_entity) for named_entity in list_hyp_ne_trees]
+            number_tokens_hyp_doc = sum(list_number_tokens_hyp_nes)
+            numerator += number_tokens_hyp_doc
+            denominator += number_tokens_hyp_doc
+        #General case (both lists contain NE trees)
+        else:
+            cost_best_path, length_best_path = compute_micro_levenshtein(list_ref_ne_trees, list_hyp_ne_trees)
+            numerator += cost_best_path
+            denominator += length_best_path
+    
+    print("REF NEs: ", number_ref_nes)
+    print("HYP NEs: ", number_hyp_nes)
+
+    return (numerator / denominator)*100.0
+
+#Compute macro-averaged ordered ETER score for a whole corpus, considering a list of NEs for each document in the corpus
+def compute_macro_ordered_eter(list_ref_doc_nes: list, list_hyp_doc_nes: list) -> float:
+    numerator = 0.0
+    denominator = 0.0
+
+    number_ref_nes = 0
+    number_hyp_nes = 0
+
+    for doc_i, list_ref_ne_trees in enumerate(list_ref_doc_nes):
+        list_hyp_ne_trees = list_hyp_doc_nes[doc_i]
+
+        number_ref_nes += len(list_ref_ne_trees)
+        number_hyp_nes += len(list_hyp_ne_trees)
+
+        #If neither reference nor hypothesis contain NEs, skip
+        if len(list_ref_ne_trees) == 0 and len(list_hyp_ne_trees) == 0:
+            pass
+        #If only one contains NEs (XOR) => all NEs are considered as errors
+        elif (len(list_ref_ne_trees) != 0 and len(list_hyp_ne_trees) == 0) or (len(list_ref_ne_trees) == 0 and len(list_hyp_ne_trees) != 0):
+            numerator += len(list_ref_ne_trees) + len(list_hyp_ne_trees)
+            denominator += len(list_ref_ne_trees) + len(list_hyp_ne_trees)
+        #General case (both lists contain NE trees)
+        else:
+            cost_best_path, length_best_path = compute_macro_levenshtein(list_ref_ne_trees, list_hyp_ne_trees)
+            numerator += cost_best_path
+            denominator += length_best_path
+            
+    print("REF NEs: ", number_ref_nes)
+    print("HYP NEs: ", number_hyp_nes)
+
+    return (numerator / denominator)*100.0
 
 
 if __name__=="__main__":
@@ -210,11 +375,31 @@ if __name__=="__main__":
     
     #Micro levenshtein
     if not macro_average and ordered:
-        pass
+        score = compute_micro_ordered_eter(list_ref_docs, list_hyp_docs)
+
+        #Print results on screen
+        print("MICRO OETER:", score)
+        print("MICRO OETER (formatted):", round(score,1))
+
+        #Compute 95% confidence interval assuming binomial distribution
+        conf_interval = 1.96 * sqrt((score * (100-score)) / num_docs)
+
+        print("95% Confidence interval (Binomial distribution): {:.1f} +- {:.1f} = [{:.1f},{:.1f}]".format(score, conf_interval, score-conf_interval, score+conf_interval))
+    
 
     #Macro levenshtein
     if macro_average and ordered:
-        pass
+        score = compute_macro_ordered_eter(list_ref_docs, list_hyp_docs)
+
+        #Print results on screen
+        print("MACRO OETER:", score)
+        print("MACRO OETER (formatted):", round(score,1))
+
+        #Compute 95% confidence interval assuming binomial distribution
+        conf_interval = 1.96 * sqrt((score * (100-score)) / num_docs)
+
+        print("95% Confidence interval (Binomial distribution): {:.1f} +- {:.1f} = [{:.1f},{:.1f}]".format(score, conf_interval, score-conf_interval, score+conf_interval))
+    
 
     #Micro hungarian
     if not macro_average and not ordered:

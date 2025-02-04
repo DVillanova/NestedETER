@@ -473,6 +473,9 @@ def calc_edit_dist(ref_ne: list, hyp_ne: list, tagging_weight = 1.0) -> tuple[fl
     list_sizes = []
 
     #Compute levenshtein distance considering marked elements and tags
+    #Iterate over tuples of reference and hypothesis tagged and marked transcriptions
+    #according to the sequence of Tree Edit operations that produces said transcriptions
+    #to later perform a search of the minimum
     for (ref_tagged_transcription, hyp_tagged_transcription) in list_tagged_and_marked_transcription_tuples:
         LEN_VECTOR = len(ref_tagged_transcription)+1
         #Vectors of two components -> cost of path and length of  path
