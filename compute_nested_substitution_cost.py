@@ -188,6 +188,8 @@ def simple_distance(A, B, get_children=Node.get_children,
 
 zss.simple_distance = simple_distance
 
+
+
 #Return post-order traversal of non-leaf nodes (category nodes) from original representation (list)
 def post_order_traversal_named_entity(orig_named_entity: list, path_from_root=[], index_node=0) -> list:
     if len(orig_named_entity) > 1: #Category node
@@ -207,6 +209,21 @@ def post_order_traversal_named_entity(orig_named_entity: list, path_from_root=[]
     else:
         return []
 
+#Function to count number of textual tokens in a NE with list representation
+def count_number_tokens_named_entity(named_entity: list) -> int:
+    post_order_traversal = post_order_traversal_named_entity(named_entity)
+    number_tokens = 0
+
+    for path_from_root in post_order_traversal:
+        node_to_count = named_entity
+        for node_step in path_from_root[1:]:
+            node_to_count = node_to_count[CHILDREN][node_step[1]]
+        
+        list_tokens = [child for child in node_to_count[CHILDREN] if isinstance(child, str)]
+        number_tokens += len(list_tokens)
+        
+
+    return number_tokens
 
 def post_order_traversal_tagging_tree(tagging_tree: Node, path_from_root = [], index_node = 0) -> list:
     if tagging_tree is not None:
@@ -504,12 +521,12 @@ def calc_edit_dist(ref_ne: list, hyp_ne: list, tagging_weight = 1.0) -> tuple[fl
         list_edit_distances.append(delta_o_x_y)
         list_costs.append(prev_dist_vec[-1][0])
         list_sizes.append(prev_dist_vec[-1][1])
-    #Return saturated edit distance
-    min_delta_o_x_y = min(list_edit_distances)
     
+    #Search for index of min cost
+    min_cost_o_x_y = min(list_costs)
     index_min = 0
-    for i,delta_o_x_y in enumerate(list_edit_distances):
-        if delta_o_x_y == min_delta_o_x_y:
+    for i,cost_o_x_y in enumerate(list_costs):
+        if min_cost_o_x_y == cost_o_x_y:
             index_min = i
 
-    return min_delta_o_x_y,list_costs[index_min],list_sizes[index_min]
+    return list_edit_distances[index_min],list_costs[index_min],list_sizes[index_min]
