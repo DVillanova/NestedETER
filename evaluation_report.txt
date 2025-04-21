@@ -1,0 +1,68 @@
+WORD LEVEL METRICS
+REF NEs:  3
+HYP NEs:  3
+MACRO OETER: 93.33333333333333
+MACRO OETER (formatted): 93.3
+95% Confidence interval (Binomial distribution): 93.3 +- 48.9 = [44.4,142.2]
+===================
+COMPUTATION TIME (IN SECONDS): 1
+===================
+REF NEs:  3
+HYP NEs:  3
+MICRO OETER: 68.75
+MICRO OETER (formatted): 68.8
+95% Confidence interval (Binomial distribution): 68.8 +- 90.8 = [-22.1,159.6]
+===================
+COMPUTATION TIME (IN SECONDS): 0
+===================
+REF NEs:  3
+HYP NEs:  3
+MACRO ETER: 78.51851851851852
+MACRO ETER (formatted): 78.5
+95% Confidence interval (Binomial distribution): 78.5 +- 80.5 = [-2.0,159.0]
+===================
+COMPUTATION TIME (IN SECONDS): 0
+===================
+REF NEs:  3
+HYP NEs:  3
+MICRO ETER: 66.66666666666666
+MICRO ETER (formatted): 66.7
+95% Confidence interval (Binomial distribution): 66.7 +- 92.4 = [-25.7,159.1]
+===================
+COMPUTATION TIME (IN SECONDS): 0
+===================
+
+
+CHAR LEVEL METRICS
+REF NEs:  3
+HYP NEs:  3
+MACRO OETER: 91.52625152625153
+MACRO OETER (formatted): 91.5
+95% Confidence interval (Binomial distribution): 91.5 +- 54.6 = [36.9,146.1]
+===================
+COMPUTATION TIME (IN SECONDS): 0
+===================
+REF NEs:  3
+HYP NEs:  3
+MICRO OETER: 60.86956521739131
+MICRO OETER (formatted): 60.9
+95% Confidence interval (Binomial distribution): 60.9 +- 95.7 = [-34.8,156.5]
+===================
+COMPUTATION TIME (IN SECONDS): 0
+===================
+REF NEs:  3
+HYP NEs:  3
+MACRO ETER: 38.91737891737892
+MACRO ETER (formatted): 38.9
+95% Confidence interval (Binomial distribution): 38.9 +- 95.6 = [-56.6,134.5]
+===================
+COMPUTATION TIME (IN SECONDS): 0
+===================
+REF NEs:  3
+HYP NEs:  3
+MICRO ETER: 46.98795180722892
+MICRO ETER (formatted): 47.0
+95% Confidence interval (Binomial distribution): 47.0 +- 97.8 = [-50.8,144.8]
+===================
+COMPUTATION TIME (IN SECONDS): 1
+===================

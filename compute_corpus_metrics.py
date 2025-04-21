@@ -334,7 +334,7 @@ def compute_macro_ordered_eter(list_ref_doc_nes: list, list_hyp_doc_nes: list) -
 if __name__=="__main__":
     #Read flags to indicate normalization,score, and char-level   
     if len(sys.argv) != 5:
-        print("Usage: python compute_corpus_metrics <macro|micro> <ordered|unordered> <char|word> <ref_dir> <hyp_dir>")
+        print("Usage: python compute_corpus_metrics.py <macro|micro> <ordered|unordered> <ref_dir> <hyp_dir>")
         print("<macro|micro>: Whether to macro-average or micro-average")
         print("<ordered|unordered>: Whether to use reading-order constraints (ordered) or hungarian algorithm (unordered)")
         print("<ref_dir>: Path to directory where the reference .pkl lists are stored")
