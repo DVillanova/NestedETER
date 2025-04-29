@@ -82,7 +82,7 @@ def generate_macro_cost_and_lengths_matrices(list_ref_ne_trees: list, list_hyp_n
     return costs,lengths
     
 #Compute micro-averaged unordered ETER score for a whole corpus, considering a list of NEs for each document in the corpus
-def compute_micro_eter(list_ref_doc_nes: list, list_hyp_doc_nes: list) -> float:
+def compute_micro_eter(list_ref_doc_nes: list, list_hyp_doc_nes: list) -> (float, float):
     numerator = 0.0
     denominator = 0.0
 
@@ -118,15 +118,18 @@ def compute_micro_eter(list_ref_doc_nes: list, list_hyp_doc_nes: list) -> float:
             for i,j in indexes:
                 numerator += cost_matrix[i][j]
                 denominator += length_matrix[i][j]
+                
     
     print("REF NEs: ", number_ref_nes)
     print("HYP NEs: ", number_hyp_nes)
-
-    return (numerator / denominator)*100.0
+    
+    error_rate = numerator / denominator
+    std_error = sqrt((error_rate * (1 - error_rate)) / denominator)
+    return error_rate*100.0, std_error*100.0 
 
 
 #Compute macro-averaged unordered ETER score for a whole corpus, considering a list of NEs for each document in the corpus
-def compute_macro_eter(list_ref_doc_nes: list, list_hyp_doc_nes: list) -> float:
+def compute_macro_eter(list_ref_doc_nes: list, list_hyp_doc_nes: list) -> (float, float):
 
     numerator = 0.0
     denominator = 0.0
@@ -160,7 +163,9 @@ def compute_macro_eter(list_ref_doc_nes: list, list_hyp_doc_nes: list) -> float:
     print("REF NEs: ", number_ref_nes)
     print("HYP NEs: ", number_hyp_nes)
 
-    return (numerator / denominator)*100.0
+    error_rate = numerator / denominator
+    std_error = sqrt((error_rate * (1 - error_rate)) / denominator)
+    return error_rate*100.0, std_error*100.0 
 
 #Compute edit distance between sequences of NEs -> return cost of the path and length of the path
 def compute_macro_levenshtein(list_ref_ne_trees: list, list_hyp_ne_trees: list) -> tuple[float,float]:
@@ -259,7 +264,7 @@ def compute_micro_levenshtein(list_ref_ne_trees: list, list_hyp_ne_trees: list) 
     return prev_dist_vec[-1][0], prev_dist_vec[-1][1]
 
 #Compute micro-averaged ordered ETER score for a whole corpus, considering a list of NEs for each document in the corpus
-def compute_micro_ordered_eter(list_ref_doc_nes: list, list_hyp_doc_nes: list) -> float:
+def compute_micro_ordered_eter(list_ref_doc_nes: list, list_hyp_doc_nes: list) -> (float, float):
     numerator = 0.0
     denominator = 0.0
 
@@ -296,10 +301,12 @@ def compute_micro_ordered_eter(list_ref_doc_nes: list, list_hyp_doc_nes: list) -
     print("REF NEs: ", number_ref_nes)
     print("HYP NEs: ", number_hyp_nes)
 
-    return (numerator / denominator)*100.0
+    error_rate = numerator / denominator
+    std_error = sqrt((error_rate * (1 - error_rate)) / denominator)
+    return error_rate*100.0, std_error*100.0 
 
 #Compute macro-averaged ordered ETER score for a whole corpus, considering a list of NEs for each document in the corpus
-def compute_macro_ordered_eter(list_ref_doc_nes: list, list_hyp_doc_nes: list) -> float:
+def compute_macro_ordered_eter(list_ref_doc_nes: list, list_hyp_doc_nes: list) -> (float, float):
     numerator = 0.0
     denominator = 0.0
 
@@ -328,7 +335,9 @@ def compute_macro_ordered_eter(list_ref_doc_nes: list, list_hyp_doc_nes: list) -
     print("REF NEs: ", number_ref_nes)
     print("HYP NEs: ", number_hyp_nes)
 
-    return (numerator / denominator)*100.0
+    error_rate = numerator / denominator
+    std_error = sqrt((error_rate * (1 - error_rate)) / denominator)
+    return error_rate*100.0, std_error*100.0 
 
 
 if __name__=="__main__":
@@ -375,42 +384,42 @@ if __name__=="__main__":
     
     #Micro levenshtein
     if not macro_average and ordered:
-        score = compute_micro_ordered_eter(list_ref_docs, list_hyp_docs)
+        score,std_err = compute_micro_ordered_eter(list_ref_docs, list_hyp_docs)
 
         #Print results on screen
         print("MICRO OETER:", score)
         print("MICRO OETER (formatted):", round(score,1))
 
         #Compute 95% confidence interval assuming binomial distribution
-        conf_interval = 1.96 * sqrt((score * (100-score)) / num_docs)
+        conf_interval = 1.96 * std_err
 
         print("95% Confidence interval (Binomial distribution): {:.1f} +- {:.1f} = [{:.1f},{:.1f}]".format(score, conf_interval, score-conf_interval, score+conf_interval))
     
 
     #Macro levenshtein
     if macro_average and ordered:
-        score = compute_macro_ordered_eter(list_ref_docs, list_hyp_docs)
+        score, std_err = compute_macro_ordered_eter(list_ref_docs, list_hyp_docs)
 
         #Print results on screen
         print("MACRO OETER:", score)
         print("MACRO OETER (formatted):", round(score,1))
 
         #Compute 95% confidence interval assuming binomial distribution
-        conf_interval = 1.96 * sqrt((score * (100-score)) / num_docs)
+        conf_interval = 1.96 * std_err
 
         print("95% Confidence interval (Binomial distribution): {:.1f} +- {:.1f} = [{:.1f},{:.1f}]".format(score, conf_interval, score-conf_interval, score+conf_interval))
     
 
     #Micro hungarian
     if not macro_average and not ordered:
-        score = compute_micro_eter(list_ref_docs, list_hyp_docs)
+        score, std_err = compute_micro_eter(list_ref_docs, list_hyp_docs)
 
         #Print results on screen
         print("MICRO ETER:", score)
         print("MICRO ETER (formatted):", round(score,1))
 
         #Compute 95% confidence interval assuming binomial distribution
-        conf_interval = 1.96 * sqrt((score * (100-score)) / num_docs)
+        conf_interval = 1.96 * std_err
 
         print("95% Confidence interval (Binomial distribution): {:.1f} +- {:.1f} = [{:.1f},{:.1f}]".format(score, conf_interval, score-conf_interval, score+conf_interval))
     
@@ -418,14 +427,14 @@ if __name__=="__main__":
 
     #Macro hungarian
     if macro_average and not ordered:
-        score = compute_macro_eter(list_ref_docs, list_hyp_docs)
+        score, std_err = compute_macro_eter(list_ref_docs, list_hyp_docs)
 
         #Print results on screen
         print("MACRO ETER:", score)
         print("MACRO ETER (formatted):", round(score,1))
 
         #Compute 95% confidence interval assuming binomial distribution
-        conf_interval = 1.96 * sqrt((score * (100-score)) / num_docs)
+        conf_interval = 1.96 * std_err
 
         print("95% Confidence interval (Binomial distribution): {:.1f} +- {:.1f} = [{:.1f},{:.1f}]".format(score, conf_interval, score-conf_interval, score+conf_interval))
     
