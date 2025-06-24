@@ -1,24 +1,21 @@
 WORD LEVEL METRICS
-REF NEs:  1078
-HYP NEs:  551
-MACRO OETER: 76.14575799803167
-MACRO OETER (formatted): 76.1
-95% Confidence interval (Binomial distribution): 76.1 +- 2.5 = [73.6,78.7]
-REF NEs:  1078
-HYP NEs:  551
-MICRO OETER: 77.57627480264561
-MICRO OETER (formatted): 77.6
-95% Confidence interval (Binomial distribution): 77.6 +- 1.2 = [76.4,78.8]
-REF NEs:  1078
-HYP NEs:  551
-MACRO ETER: 74.83648186623341
-MACRO ETER (formatted): 74.8
-95% Confidence interval (Binomial distribution): 74.8 +- 2.6 = [72.3,77.4]
-REF NEs:  1078
-HYP NEs:  551
-MICRO ETER: 76.55491839435378
-MICRO ETER (formatted): 76.6
-95% Confidence interval (Binomial distribution): 76.6 +- 1.2 = [75.3,77.8]
-
-
-CHAR LEVEL METRICS
+REF NEs:  3
+HYP NEs:  3
+MACRO OETER: 100.0
+MACRO OETER (formatted): 100.0
+95% Confidence interval (Binomial distribution): 100.0 +- 0.0 = [100.0,100.0]
+REF NEs:  3
+HYP NEs:  3
+MICRO OETER: 68.75
+MICRO OETER (formatted): 68.8
+95% Confidence interval (Binomial distribution): 68.8 +- 22.7 = [46.0,91.5]
+REF NEs:  3
+HYP NEs:  3
+MACRO ETER: 78.51851851851852
+MACRO ETER (formatted): 78.5
+95% Confidence interval (Binomial distribution): 78.5 +- 46.5 = [32.0,125.0]
+REF NEs:  3
+HYP NEs:  3
+MICRO ETER: 66.66666666666666
+MICRO ETER (formatted): 66.7
+95% Confidence interval (Binomial distribution): 66.7 +- 23.9 = [42.8,90.5]

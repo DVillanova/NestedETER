@@ -5,7 +5,7 @@ from compute_nested_substitution_cost import calc_edit_dist, count_number_tokens
 import typing
 from math import sqrt
 import copy
-
+import random
 from munkres import Munkres
 
 # Global Munkres algorithm
@@ -375,6 +375,8 @@ if __name__=="__main__":
     for hyp_filename in os.listdir(hyp_dir):
         hyp_file = open(hyp_dir + "/" + hyp_filename, "rb")
         hyp_ne_tree = pickle.load(hyp_file)
+        #To test invariability to reading order uncomment the next line
+        # random.shuffle(hyp_ne_tree)
         list_hyp_docs.append(hyp_ne_tree)
 
     score = 100.0
