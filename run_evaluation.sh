@@ -15,6 +15,9 @@ mkdir -p ./char_hypotheses/
 rm ./char_hypotheses/*
 
 
+# TODO: Complete .bio parsing using bio_parser + json_to_pkl.py script
+
+
 # EVALUATION OVER DATA
 # If it is necessary to obtain the computation time it takes, uncomment the SECONDS=0 line
 # and the following DURATION=$SECONDS and printf to get it in the evaluation report
