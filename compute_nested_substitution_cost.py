@@ -2,9 +2,8 @@ from __future__ import absolute_import
 import zss
 from zss import Node, Operation
 import copy
-
+from collections import deque
 from six.moves import range
-import collections
 
 try:
     import numpy as np
@@ -37,40 +36,36 @@ MARK = 2
 def build_tagging_tree(named_entity: list) -> Node:
     if len(named_entity) == 0:
         return None
-    
-    tagging_tree = Node(named_entity[CATEGORY])
 
-    #The elements in the queue have the path to follow from the root to find the parent node and the subtree
-    queue_nodes_to_visit_current_depth = [([], subtree) for subtree in named_entity[CHILDREN] if isinstance(subtree, list)]
-    queue_nodes_to_visit_next_depth = []
-    current_depth_index = 0
-    while len(queue_nodes_to_visit_current_depth) > 0:
-        (path_from_root, node_tuple) = queue_nodes_to_visit_current_depth.pop(0)
-        
-        #Locate where to insert category of node_tuple in tagging_tree
+    tagging_tree = Node(named_entity[CATEGORY])
+    queue = deque()
+
+    # Store (path_from_root, node_tuple, depth_index)
+    # path_from_root: list of indices to follow from root
+    # node_tuple: the current node data
+    # depth_index: index at current depth (to identify sibling position)
+    for idx, subtree in enumerate(named_entity[CHILDREN]):
+        if isinstance(subtree, list):
+            queue.append(([], subtree, idx))
+
+    while queue:
+        path_from_root, node_tuple, current_depth_index = queue.popleft()
+
+        # Locate parent node by following path indices
         parent_node = tagging_tree
         for index_path in path_from_root:
             parent_node = Node.get_children(parent_node)[index_path]
-        
-        #Insert the node
+
+        # Insert the new node
         parent_node.addkid(Node(node_tuple[CATEGORY]))
 
-        #Add the children (next depth) to visit
-        path_from_root.append(current_depth_index)
-        for subtree in node_tuple[CHILDREN]: 
+        # Create new path for next depth (list concatenation, not deepcopy)
+        new_path = path_from_root + [current_depth_index]
+
+        # Add children to queue
+        for idx, subtree in enumerate(node_tuple[CHILDREN]):
             if isinstance(subtree, list):
-                queue_nodes_to_visit_next_depth.append((copy.deepcopy(path_from_root), subtree))
-
-        #Update counter of index current depth
-        current_depth_index += 1
-
-        #If current_depth is empty, swap lists and reset index counter
-        if len(queue_nodes_to_visit_current_depth) == 0:
-            aux = queue_nodes_to_visit_current_depth
-            queue_nodes_to_visit_current_depth = queue_nodes_to_visit_next_depth
-            queue_nodes_to_visit_next_depth = aux
-
-            current_depth_index = 0
+                queue.append((new_path, subtree, idx))
 
     return tagging_tree
 
@@ -84,7 +79,6 @@ MATCH = Operation.match
 
 def distance(A, B, get_children, insert_cost, remove_cost, update_cost,
              return_operations=False):
-    '''Your modified distance function goes here'''
     A, B = zss.AnnotatedTree(A, get_children), zss.AnnotatedTree(B, get_children)
     size_a = len(A.nodes)
     size_b = len(B.nodes)
@@ -189,22 +183,21 @@ def simple_distance(A, B, get_children=Node.get_children,
 zss.simple_distance = simple_distance
 
 
+def post_order_traversal_named_entity(orig_named_entity: list, path_from_root=None, index_node=0) -> list:
+    if path_from_root is None:
+        path_from_root = []
 
-#Return post-order traversal of non-leaf nodes (category nodes) from original representation (list)
-def post_order_traversal_named_entity(orig_named_entity: list, path_from_root=[], index_node=0) -> list:
-    if len(orig_named_entity) > 1: #Category node
-        named_entity = copy.deepcopy(orig_named_entity)
-
-        path_from_root = copy.deepcopy(path_from_root)
-        path_from_root.append((named_entity[CATEGORY], index_node))
+    if len(orig_named_entity) > 1:  # Category node
+        path_from_root.append((orig_named_entity[CATEGORY], index_node))
         post_order = []
 
-        children = named_entity[CHILDREN]
+        children = orig_named_entity[CHILDREN]
         for idx, child in enumerate(children):
             if isinstance(child, list):
                 post_order.extend(post_order_traversal_named_entity(child, path_from_root, idx))
-        
-        post_order.append(path_from_root)
+
+        post_order.append(path_from_root[:])
+        path_from_root.pop()  # Backtrack - reuse same list
         return post_order
     else:
         return []
@@ -516,7 +509,7 @@ def calc_edit_dist(ref_ne: list, hyp_ne: list, tagging_weight = 1.0) -> tuple[fl
                     path_lens.append(prev_dist_vec[i - 1][1] + 1)
                 dist_vec[i][1] = max(path_lens)
 
-            prev_dist_vec = copy.deepcopy(dist_vec)
+            prev_dist_vec, dist_vec = dist_vec, prev_dist_vec
             
             dist_vec = [[0,0] for _ in range(LEN_VECTOR)]
 
