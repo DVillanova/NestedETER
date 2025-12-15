@@ -36,38 +36,43 @@ MARK = 2
 def build_tagging_tree(named_entity: list) -> Node:
     if len(named_entity) == 0:
         return None
-
+    
     tagging_tree = Node(named_entity[CATEGORY])
-    queue = deque()
 
-    # Store (path_from_root, node_tuple, depth_index)
-    # path_from_root: list of indices to follow from root
-    # node_tuple: the current node data
-    # depth_index: index at current depth (to identify sibling position)
-    for idx, subtree in enumerate(named_entity[CHILDREN]):
-        if isinstance(subtree, list):
-            queue.append(([], subtree, idx))
-
-    while queue:
-        path_from_root, node_tuple, current_depth_index = queue.popleft()
-
-        # Locate parent node by following path indices
+    #The elements in the queue have the path to follow from the root to find the parent node and the subtree
+    queue_nodes_to_visit_current_depth = [([], subtree) for subtree in named_entity[CHILDREN] if isinstance(subtree, list)]
+    queue_nodes_to_visit_next_depth = []
+    current_depth_index = 0
+    while len(queue_nodes_to_visit_current_depth) > 0:
+        (path_from_root, node_tuple) = queue_nodes_to_visit_current_depth.pop(0)
+        
+        #Locate where to insert category of node_tuple in tagging_tree
         parent_node = tagging_tree
         for index_path in path_from_root:
             parent_node = Node.get_children(parent_node)[index_path]
-
-        # Insert the new node
+        
+        #Insert the node
         parent_node.addkid(Node(node_tuple[CATEGORY]))
 
-        # Create new path for next depth (list concatenation, not deepcopy)
-        new_path = path_from_root + [current_depth_index]
-
-        # Add children to queue
-        for idx, subtree in enumerate(node_tuple[CHILDREN]):
+        #Add the children (next depth) to visit
+        path_from_root.append(current_depth_index)
+        for subtree in node_tuple[CHILDREN]: 
             if isinstance(subtree, list):
-                queue.append((new_path, subtree, idx))
+                queue_nodes_to_visit_next_depth.append((copy.deepcopy(path_from_root), subtree))
+
+        #Update counter of index current depth
+        current_depth_index += 1
+
+        #If current_depth is empty, swap lists and reset index counter
+        if len(queue_nodes_to_visit_current_depth) == 0:
+            aux = queue_nodes_to_visit_current_depth
+            queue_nodes_to_visit_current_depth = queue_nodes_to_visit_next_depth
+            queue_nodes_to_visit_next_depth = aux
+
+            current_depth_index = 0
 
     return tagging_tree
+
 
 #Overwrite function definition of Distance in zss to return all sequences of edit operations instead of
 #just one that can reach the final node
