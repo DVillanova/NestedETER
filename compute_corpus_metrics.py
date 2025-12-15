@@ -264,6 +264,7 @@ def compute_micro_levenshtein(list_ref_ne_trees: list, list_hyp_ne_trees: list) 
     return prev_dist_vec[-1][0], prev_dist_vec[-1][1]
 
 #Compute micro-averaged ordered ETER score for a whole corpus, considering a list of NEs for each document in the corpus
+#Returns: error rate, standard error assuming bynomial distribution
 def compute_micro_ordered_eter(list_ref_doc_nes: list, list_hyp_doc_nes: list) -> (float, float):
     numerator = 0.0
     denominator = 0.0
@@ -306,6 +307,7 @@ def compute_micro_ordered_eter(list_ref_doc_nes: list, list_hyp_doc_nes: list) -
     return error_rate*100.0, std_error*100.0 
 
 #Compute macro-averaged ordered ETER score for a whole corpus, considering a list of NEs for each document in the corpus
+#Returns: error rate, standard error assuming bynomial distribution
 def compute_macro_ordered_eter(list_ref_doc_nes: list, list_hyp_doc_nes: list) -> (float, float):
     numerator = 0.0
     denominator = 0.0
