@@ -531,3 +531,4 @@ def calc_edit_dist(ref_ne: list, hyp_ne: list, tagging_weight = 1.0) -> tuple[fl
             index_min = i
 
     return list_edit_distances[index_min],list_costs[index_min],list_sizes[index_min]
+

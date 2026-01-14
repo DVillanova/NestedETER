@@ -1,5 +1,10 @@
 from zss import Node
-from compute_nested_substitution_cost import calc_edit_dist, obtain_tagged_and_marked_transcriptions, post_order_traversal_named_entity
+from nested_eter.compute_nested_substitution_cost import (
+    calc_edit_dist,
+    obtain_tagged_and_marked_transcriptions,
+    post_order_traversal_named_entity,
+)
+
 
 # <A> a <B> b </B> c </A>
 g_0_ne = [
@@ -284,46 +289,54 @@ hyp_real_case_ne = [
 ]
 
 
-assert(calc_edit_dist(g_3_ne, h_10_ne)[0]) == 0.5
-assert(calc_edit_dist(h_10_ne, g_3_ne)[0]) == 0.5
+def test_calc_edit_dist_symmetric_cases():
+    assert (calc_edit_dist(g_3_ne, h_10_ne)[0]) == 0.5
+    assert (calc_edit_dist(h_10_ne, g_3_ne)[0]) == 0.5
 
-assert(calc_edit_dist(g_4_ne, h_10_ne)[0]) == 0.75
-assert(calc_edit_dist(h_10_ne, g_4_ne)[0]) == 0.75
+    assert (calc_edit_dist(g_4_ne, h_10_ne)[0]) == 0.75
+    assert (calc_edit_dist(h_10_ne, g_4_ne)[0]) == 0.75
 
-assert (calc_edit_dist(g_0_ne, h_0_ne)[0]) == 1.0
-assert calc_edit_dist(h_0_ne, g_0_ne)[0] == 1.0
+    assert (calc_edit_dist(g_0_ne, h_0_ne)[0]) == 1.0
+    assert calc_edit_dist(h_0_ne, g_0_ne)[0] == 1.0
 
-assert abs(0.33333333 - calc_edit_dist(g_0_ne, h_1_ne)[0]) < 0.0001
-assert abs(0.33333333 - calc_edit_dist(h_1_ne, g_0_ne)[0]) < 0.0001
 
-assert abs(0.33333333 - calc_edit_dist(g_0_ne, h_2_ne)[0]) < 0.0001
-assert abs(0.33333333 - calc_edit_dist(h_2_ne, g_0_ne)[0]) < 0.0001
+def test_calc_edit_dist_partial_transcriptions():
+    assert abs(0.33333333 - calc_edit_dist(g_0_ne, h_1_ne)[0]) < 0.0001
+    assert abs(0.33333333 - calc_edit_dist(h_1_ne, g_0_ne)[0]) < 0.0001
 
-assert abs(0.33333333 - calc_edit_dist(g_0_ne, h_3_ne)[0]) < 0.0001
-assert abs(0.33333333 - calc_edit_dist(h_3_ne, g_0_ne)[0]) < 0.0001
+    assert abs(0.33333333 - calc_edit_dist(g_0_ne, h_2_ne)[0]) < 0.0001
+    assert abs(0.33333333 - calc_edit_dist(h_2_ne, g_0_ne)[0]) < 0.0001
 
-assert (calc_edit_dist(h_4_ne, g_0_ne)[0]) == 1.0
-assert (calc_edit_dist(g_0_ne, h_4_ne)[0]) == 1.0
+    assert abs(0.33333333 - calc_edit_dist(g_0_ne, h_3_ne)[0]) < 0.0001
+    assert abs(0.33333333 - calc_edit_dist(h_3_ne, g_0_ne)[0]) < 0.0001
 
-assert calc_edit_dist(g_0_ne, h_5_ne)[0] == 1.0
-assert calc_edit_dist(h_5_ne, g_0_ne)[0] == 1.0
 
-assert calc_edit_dist(g_1_ne_word, h_6_ne_word)[0] == 0.5
-assert calc_edit_dist(h_6_ne_word, g_1_ne_word)[0] == 0.5
+def test_calc_edit_dist_substitution_and_empty_cases():
+    assert (calc_edit_dist(h_4_ne, g_0_ne)[0]) == 1.0
+    assert (calc_edit_dist(g_0_ne, h_4_ne)[0]) == 1.0
 
-assert abs(0.647058824 - calc_edit_dist(g_1_ne_char, h_6_ne_char)[0]) < 0.0001
-assert abs(0.647058824 - calc_edit_dist(h_6_ne_char, g_1_ne_char)[0]) < 0.0001
+    assert calc_edit_dist(g_0_ne, h_5_ne)[0] == 1.0
+    assert calc_edit_dist(h_5_ne, g_0_ne)[0] == 1.0
 
-assert calc_edit_dist(g_1_ne_word, h_7_ne_word)[0] == 1.0
-assert calc_edit_dist(h_7_ne_word, g_1_ne_word)[0] == 1.0
 
-assert calc_edit_dist(g_1_ne_char, h_7_ne_char)[0] == 1.0
-assert calc_edit_dist(h_7_ne_char, g_1_ne_char)[0] == 1.0
+def test_calc_edit_dist_word_vs_char_cases():
+    assert calc_edit_dist(g_1_ne_word, h_6_ne_word)[0] == 0.5
+    assert calc_edit_dist(h_6_ne_word, g_1_ne_word)[0] == 0.5
 
-assert calc_edit_dist(g_2_ne, h_8_ne)[0] == 0.25
-assert calc_edit_dist(h_8_ne, g_2_ne)[0] == 0.25
+    assert abs(0.647058824 - calc_edit_dist(g_1_ne_char, h_6_ne_char)[0]) < 0.0001
+    assert abs(0.647058824 - calc_edit_dist(h_6_ne_char, g_1_ne_char)[0]) < 0.0001
 
-assert calc_edit_dist(g_2_ne, h_9_ne)[0] == 0.5
-assert calc_edit_dist(h_9_ne, g_2_ne)[0] == 0.5
+    assert calc_edit_dist(g_1_ne_word, h_7_ne_word)[0] == 1.0
+    assert calc_edit_dist(h_7_ne_word, g_1_ne_word)[0] == 1.0
 
-print("SUCCESSFULLY RAN ALL TESTS")
+    assert calc_edit_dist(g_1_ne_char, h_7_ne_char)[0] == 1.0
+    assert calc_edit_dist(h_7_ne_char, g_1_ne_char)[0] == 1.0
+
+
+def test_calc_edit_dist_nested_categories():
+    assert calc_edit_dist(g_2_ne, h_8_ne)[0] == 0.25
+    assert calc_edit_dist(h_8_ne, g_2_ne)[0] == 0.25
+
+    assert calc_edit_dist(g_2_ne, h_9_ne)[0] == 0.5
+    assert calc_edit_dist(h_9_ne, g_2_ne)[0] == 0.5
+

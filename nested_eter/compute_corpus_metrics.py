@@ -1,7 +1,7 @@
 import sys
-import os 
+import os
 import pickle
-from compute_nested_substitution_cost import calc_edit_dist, count_number_tokens_named_entity
+from .compute_nested_substitution_cost import calc_edit_dist, count_number_tokens_named_entity
 import typing
 from math import sqrt
 import copy
@@ -10,6 +10,7 @@ from munkres import Munkres
 
 # Global Munkres algorithm
 M = Munkres()
+
 
 #Given two lists of NEs, return matrices of cost and size of substitution operations considering micro average
 def generate_micro_cost_and_lengths_matrices(list_ref_ne_trees: list, list_hyp_ne_trees: list) -> tuple[list,list]:
@@ -53,6 +54,7 @@ def generate_micro_cost_and_lengths_matrices(list_ref_ne_trees: list, list_hyp_n
             lengths[i][j] = l_x_y
     
     return costs,lengths
+
 
 #Given two lists of NEs, return matrices of cost and size of substitution operations considering macro average
 def generate_macro_cost_and_lengths_matrices(list_ref_ne_trees: list, list_hyp_ne_trees: list) -> tuple[list,list]:
@@ -231,8 +233,6 @@ def compute_micro_levenshtein(list_ref_ne_trees: list, list_hyp_ne_trees: list) 
         dist_vec[0][0] = prev_dist_vec[0][0] + count_number_tokens_named_entity(j_hyp_ne)
         dist_vec[0][1] = prev_dist_vec[0][1] + count_number_tokens_named_entity(j_hyp_ne)
 
-        
-
         for i in range(1, LEN_VECTOR):
             i_ref_ne = list_ref_ne_trees[i-1]
             
@@ -342,8 +342,8 @@ def compute_macro_ordered_eter(list_ref_doc_nes: list, list_hyp_doc_nes: list) -
     return error_rate*100.0, std_error*100.0 
 
 
-if __name__=="__main__":
-    #Read flags to indicate normalization,score, and char-level   
+def main() -> None:
+    #Read flags to indicate normalization,score, and char-level
     if len(sys.argv) != 5:
         print("Usage: python compute_corpus_metrics.py <macro|micro> <ordered|unordered> <ref_dir> <hyp_dir>")
         print("<macro|micro>: Whether to macro-average or micro-average")
@@ -427,7 +427,7 @@ if __name__=="__main__":
 
         print("95% Confidence interval (Binomial distribution): {:.1f} +- {:.1f} = [{:.1f},{:.1f}]".format(score, conf_interval, score-conf_interval, score+conf_interval))
     
-    
+
 
     #Macro hungarian
     if macro_average and not ordered:
@@ -441,5 +441,8 @@ if __name__=="__main__":
         conf_interval = 1.96 * std_err
 
         print("95% Confidence interval (Binomial distribution): {:.1f} +- {:.1f} = [{:.1f},{:.1f}]".format(score, conf_interval, score-conf_interval, score+conf_interval))
-    
-    
+
+
+if __name__=="__main__":
+    main()
+

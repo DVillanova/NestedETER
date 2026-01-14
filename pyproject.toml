@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "nested-eter"
+version = "0.1.0"
+description = "Nested named-entity ETER metrics (micro/macro, ordered/unordered)."
+authors = [
+    { name = "David", email = "davidvillanovaaparisi@gmail.com" },
+]
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = [
+    "munkres",
+    "zss",
+    "six",
+    "editdistance",
+]
+
+[project.scripts]
+compute-eter = "nested_eter.compute_corpus_metrics:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["nested_eter*"]
