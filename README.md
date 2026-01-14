@@ -42,3 +42,6 @@ from nested_eter import (
 
 Each function operates on lists of named-entity trees for reference and hypothesis corpora and returns a tuple of `(score, standard_error)` in percentage units.
 
+### TODO
+
+- **BIO parsing integration**: Full integration of BIO format parsing will be added to support direct conversion from BIO-tagged files to the internal named-entity tree representation used by the metrics.
