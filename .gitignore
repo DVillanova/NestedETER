@@ -14,6 +14,7 @@ labels/
 hypotheses/
 char_labels/
 char_hypotheses/
+pkl_*/
 evaluation_report.txt
 
 # Local virtual environments

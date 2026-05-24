@@ -1,0 +1,9 @@
+# Nested ETER end-to-end pipeline requirements.
+#
+# Installs the local `nested-eter` package (which exposes the
+# `compute-eter` CLI) and the bundled `bio-parser` (which exposes the
+# `bio-parser` CLI). All other Python dependencies are pulled in
+# transitively through these two projects' own metadata.
+
+-e .
+-e ./bio-parser-support-nested-entities

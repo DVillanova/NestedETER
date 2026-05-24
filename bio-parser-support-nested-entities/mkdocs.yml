@@ -1,0 +1,80 @@
+site_name: BIO Parser
+site_dir: public
+
+theme:
+  name: material
+
+  font:
+    text: Roboto
+    code: Roboto Mono
+
+  features:
+  - navigation.top
+  - navigation.tracking
+  - navigation.indexes
+  - navigation.instant
+  - navigation.instant.progress
+  - content.code.copy
+
+  palette:
+    # Palette toggle for light mode
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+
+    # Palette toggle for dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+
+plugins:
+- search
+- autorefs
+- literate-nav:
+    nav_file: SUMMARY.md
+- mkdocstrings:
+    handlers:
+      python:
+        options:
+          show_root_toc_entry: false
+          show_object_full_path: false
+          show_root_heading: yes
+          show_source: true
+          docstring_style: google
+          merge_init_into_class: yes
+          show_category_heading: yes
+          show_signature_annotations: yes
+          separate_signature: yes
+          members_order: source
+          unwrap_annotated: yes
+          show_if_no_docstring: yes
+          filters:
+            - "!^_"
+            - "!^__"
+
+nav:
+  - Home: index.md
+  - Get started:
+    - get_started/index.md
+    - Development: get_started/development.md
+  - Usage:
+    - usage/index.md
+    - Validation: usage/validate.md
+  # defer to literate-nav
+  - Code Reference: reference/
+
+copyright:  Copyright &copy; Teklia
+
+extra:
+  social:
+    - icon: fontawesome/brands/gitlab
+      name: Git repository for this project
+      link: https://gitlab.teklia.com/ner/metrics/bio-parser
+
+markdown_extensions:
+  - pymdownx.superfences
+  - admonition

@@ -1,57 +1,62 @@
 #!/bin/bash
+# Run the full ETER evaluation suite (word- and char-level, both
+# macro/micro and ordered/unordered variants) and time each call.
+#
+# The script assumes that:
+#   - ./labels/             contains the word-level reference  .pkl files
+#   - ./hypotheses/         contains the word-level hypothesis .pkl files
+#   - ./char_labels/        contains the char-level reference  .pkl files
+#   - ./char_hypotheses/    contains the char-level hypothesis .pkl files
+#
+# Other files (.bio, .json, ...) in these folders are silently ignored by
+# the `compute-eter` CLI.
+set -euo pipefail
 
-# PARSING .BIO FILES
-# .bio files into labels, char_labels, hypotheses, and char_hypotheses directories
-# mkdir -p ./labels/
-# rm ./labels/*
+REPORT="evaluation_report.txt"
 
-# mkdir -p ./char_labels/
-# rm ./char_labels/*
+LABELS_DIR="${LABELS_DIR:-./labels/}"
+HYP_DIR="${HYP_DIR:-./hypotheses/}"
+CHAR_LABELS_DIR="${CHAR_LABELS_DIR:-./char_labels/}"
+CHAR_HYP_DIR="${CHAR_HYP_DIR:-./char_hypotheses/}"
 
-# mkdir -p ./hypotheses/
-# rm ./hypotheses/*
+run_eter() {
+    local label="$1"
+    local average="$2"
+    local order="$3"
+    local ref_dir="$4"
+    local hyp_dir="$5"
 
-# mkdir -p ./char_hypotheses/
-# rm ./char_hypotheses/*
+    {
+        echo "--- ${label} ---"
+        local ts tt
+        ts=$(date +%s%N)
+        compute-eter "${average}" "${order}" "${ref_dir}" "${hyp_dir}"
+        tt=$((($(date +%s%N) - ts) / 1000000))
+        echo "Time taken: ${tt} ms"
+        echo
+    } >>"${REPORT}"
+}
 
+{
+    echo "=================="
+    echo "WORD LEVEL METRICS"
+    echo "=================="
+} >"${REPORT}"
 
-# TODO: Complete .bio parsing using bio_parser + json_to_pkl.py script
+run_eter "MACRO ORDERED"   macro ordered   "${LABELS_DIR}" "${HYP_DIR}"
+run_eter "MICRO ORDERED"   micro ordered   "${LABELS_DIR}" "${HYP_DIR}"
+run_eter "MACRO UNORDERED" macro unordered "${LABELS_DIR}" "${HYP_DIR}"
+run_eter "MICRO UNORDERED" micro unordered "${LABELS_DIR}" "${HYP_DIR}"
 
+{
+    echo "=================="
+    echo "CHAR LEVEL METRICS"
+    echo "=================="
+} >>"${REPORT}"
 
-# EVALUATION OVER DATA
-printf "WORD LEVEL METRICS\n" > evaluation_report.txt
+run_eter "MACRO ORDERED"   macro ordered   "${CHAR_LABELS_DIR}" "${CHAR_HYP_DIR}"
+run_eter "MICRO ORDERED"   micro ordered   "${CHAR_LABELS_DIR}" "${CHAR_HYP_DIR}"
+run_eter "MACRO UNORDERED" macro unordered "${CHAR_LABELS_DIR}" "${CHAR_HYP_DIR}"
+run_eter "MICRO UNORDERED" micro unordered "${CHAR_LABELS_DIR}" "${CHAR_HYP_DIR}"
 
-ts=$(date +%s%N)
-compute-eter macro ordered ./labels/ ./hypotheses/ >> evaluation_report.txt
-tt=$((($(date +%s%N) - $ts)/1000000)) ; echo "Time taken: $tt ms" >> evaluation_report.txt
-
-ts=$(date +%s%N)
-compute-eter micro ordered ./labels/ ./hypotheses/ >> evaluation_report.txt
-tt=$((($(date +%s%N) - $ts)/1000000)) ; echo "Time taken: $tt ms" >> evaluation_report.txt
-
-ts=$(date +%s%N)
-compute-eter macro unordered ./labels/ ./hypotheses/ >> evaluation_report.txt
-tt=$((($(date +%s%N) - $ts)/1000000)) ; echo "Time taken: $tt ms" >> evaluation_report.txt
-
-ts=$(date +%s%N)
-compute-eter micro unordered ./labels/ ./hypotheses/ >> evaluation_report.txt
-tt=$((($(date +%s%N) - $ts)/1000000)) ; echo "Time taken: $tt ms" >> evaluation_report.txt
-
-printf "\n\nCHAR LEVEL METRICS\n" >> evaluation_report.txt
-
-ts=$(date +%s%N)
-compute-eter macro ordered ./char_labels/ ./char_hypotheses/ >> evaluation_report.txt
-tt=$((($(date +%s%N) - $ts)/1000000)) ; echo "Time taken: $tt ms" >> evaluation_report.txt
-
-ts=$(date +%s%N)
-compute-eter micro ordered ./char_labels/ ./char_hypotheses/ >> evaluation_report.txt
-tt=$((($(date +%s%N) - $ts)/1000000)) ; echo "Time taken: $tt ms" >> evaluation_report.txt
-
-ts=$(date +%s%N)
-compute-eter macro unordered ./char_labels/ ./char_hypotheses/ >> evaluation_report.txt
-tt=$((($(date +%s%N) - $ts)/1000000)) ; echo "Time taken: $tt ms" >> evaluation_report.txt
-
-ts=$(date +%s%N)
-compute-eter micro unordered ./char_labels/ ./char_hypotheses/ >> evaluation_report.txt
-tt=$((($(date +%s%N) - $ts)/1000000)) ; echo "Time taken: $tt ms" >> evaluation_report.txt
-
+echo "Evaluation report written to ${REPORT}"

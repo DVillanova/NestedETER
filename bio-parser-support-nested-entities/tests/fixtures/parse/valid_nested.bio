@@ -1,0 +1,15 @@
+Charles B-child B-name
+né I-child
+à I-child
+Beaune I-child B-location
+en I-child
+1836 I-child B-date
+père O
+Jean B-father B-name
+Bigre I-father B-surname
+charpentier I-father B-occupation
+de I-father
+cette I-father B-location
+paroisse I-father I-location
+mère O
+Marie B-mother B-name

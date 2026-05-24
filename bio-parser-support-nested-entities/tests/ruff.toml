@@ -1,0 +1,7 @@
+# Extend the `pyproject.toml` file in the parent directory...
+extend = "../pyproject.toml"
+
+ignore = [
+    # Pydocstyles.
+    "D",
+]

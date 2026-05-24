@@ -368,15 +368,20 @@ def main() -> None:
     list_ref_docs = list()
     list_hyp_docs = list()
 
-    #Read .pkl files and form list with whole corpus
-    for ref_filename in os.listdir(ref_dir):
-        ref_file = open(ref_dir + "/" + ref_filename, "rb")
-        ref_ne_tree = pickle.load(ref_file)
+    #Read .pkl files and form list with whole corpus.
+    #Folders may contain other artefacts (.bio, .json), so filter on extension.
+    #Sort to guarantee that ref and hyp docs are paired in the same order.
+    ref_filenames = sorted(f for f in os.listdir(ref_dir) if f.endswith(".pkl"))
+    hyp_filenames = sorted(f for f in os.listdir(hyp_dir) if f.endswith(".pkl"))
+
+    for ref_filename in ref_filenames:
+        with open(os.path.join(ref_dir, ref_filename), "rb") as ref_file:
+            ref_ne_tree = pickle.load(ref_file)
         list_ref_docs.append(ref_ne_tree)
 
-    for hyp_filename in os.listdir(hyp_dir):
-        hyp_file = open(hyp_dir + "/" + hyp_filename, "rb")
-        hyp_ne_tree = pickle.load(hyp_file)
+    for hyp_filename in hyp_filenames:
+        with open(os.path.join(hyp_dir, hyp_filename), "rb") as hyp_file:
+            hyp_ne_tree = pickle.load(hyp_file)
         #To test invariability to reading order uncomment the next line
         # random.shuffle(hyp_ne_tree)
         list_hyp_docs.append(hyp_ne_tree)

@@ -1,0 +1,36 @@
+.git
+.gitignore
+.vscode
+__pycache__
+**/__pycache__
+*.pyc
+*.pyo
+
+# Local virtual environment(s) -- the image creates its own
+.venv
+venv
+
+# Build / dist artefacts
+build/
+dist/
+*.egg-info/
+**/*.egg-info/
+
+# Local input/output data folders (these are mounted at runtime)
+hypotheses/
+labels/
+char_hypotheses/
+char_labels/
+pkl_*/
+evaluation_report.txt
+
+# Docker assets themselves
+Dockerfile
+.dockerignore
+
+# Tests + docs we don't need in the image
+nested_eter/tests
+bio-parser-support-nested-entities/tests
+bio-parser-support-nested-entities/docs
+bio-parser-support-nested-entities/build
+bio-parser-support-nested-entities/dist
