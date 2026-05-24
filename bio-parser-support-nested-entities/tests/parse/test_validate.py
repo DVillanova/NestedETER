@@ -143,7 +143,6 @@ def test_valid_nested():
                     {"category": "occupation", "children": ["charpentier"]},
                     "de",
                     {"category": "location", "children": ["cette", "paroisse"]},
-                    "paroisse",
                 ],
             },
             {

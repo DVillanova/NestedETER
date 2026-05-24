@@ -76,6 +76,42 @@ def test_parse_document(nested_document: NestedDocument):
     )
 
 
+def test_hierarchy_does_not_duplicate_child_final_token():
+    bio_repr = "\n".join(
+        [
+            "This B-C1",
+            "is I-C1",
+            "an I-C1",
+            "example I-C1 B-C2",
+            "of I-C1",
+            "some I-C1",
+            "nested I-C1 B-C2",
+            "NE I-C1 I-C2",
+        ]
+    )
+    document = NestedDocument("test", bio_repr)
+
+    assert document.hierarchy == [
+        {
+            "category": "C1",
+            "children": [
+                "This",
+                "is",
+                "an",
+                {"category": "C2", "children": ["example"]},
+                "of",
+                "some",
+                {"category": "C2", "children": ["nested", "NE"]},
+            ],
+        }
+    ]
+    assert document.entities == [
+        ("C1", "This is an example of some nested NE"),
+        ("C2", "example"),
+        ("C2", "nested NE"),
+    ]
+
+
 def test_parse_nested_token(nested_document: NestedDocument):
     nested_token: NestedToken = nested_document.nested_tokens[0]
 

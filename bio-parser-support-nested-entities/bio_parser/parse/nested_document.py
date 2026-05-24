@@ -116,7 +116,7 @@ class NestedSpan:
     """List of Span in the NestedSpan"""
 
     @property
-    def hierarchy(self) -> str:
+    def hierarchy(self) -> dict[str, Any]:
         """Build a hierarchy of Spans.
 
         Examples:
@@ -149,10 +149,10 @@ class NestedSpan:
                                 "children":[
                                     "Slezien"
                                 ]
-                                }
+                                },
+                                "und"
                             ]
                         },
-                        "und",
                         "herre",
                         "czu",
                         {
@@ -166,23 +166,39 @@ class NestedSpan:
         """
 
         # Recursive function to construct the hierarchy
-        def build_hierarchy(span):
+        def build_hierarchy(span: Span) -> dict[str, Any]:
             # Initialize the base dictionary
             span_dict = {"category": span.label, "children": []}
 
+            # Token index up to which tokens have already been consumed by a
+            # nested child span. Tokens with `idx < skip_until` must not be
+            # appended again as plain children, otherwise multi-token nested
+            # entities would have their non-first tokens duplicated at the
+            # parent level.
+            skip_until = -1
+
             for token in span.tokens:
-                # Check if a child span starts at this token index
-                child_span = next(
+                if token.idx < skip_until:
+                    continue
+
+                # Check if a direct child span starts at this token index. When
+                # several deeper spans start at the same token, prefer the one
+                # at the closest level (i.e. the immediate child) so that the
+                # hierarchy is correctly nested level-by-level.
+                child_span = min(
                     (
                         s
                         for s in self.spans
                         if s.level > span.level and s.tokens[0].idx == token.idx
                     ),
-                    None,
+                    key=attrgetter("level"),
+                    default=None,
                 )
                 if child_span:
-                    # Add the child span as a nested dictionary
+                    # Add the child span as a nested dictionary and skip the
+                    # tokens it covers so they aren't appended again.
                     span_dict["children"].append(build_hierarchy(child_span))
+                    skip_until = child_span.end
                 else:
                     # Add the token text if no child span exists
                     span_dict["children"].append(
